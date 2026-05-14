@@ -1,0 +1,21 @@
+.personal-page__tab-bar {
+  --background: #fff;
+  --border: 1px solid #e8e4dc;
+  padding-top: 4px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.personal-page__tab-bar ion-tab-button {
+  --color: #9a9590;
+  --color-selected: #e86a24;
+  font-size: 11px;
+}
+
+.personal-page__tab-bar ion-icon {
+  font-size: 24px;
+}
+
+.personal-page__tab-bar ion-label {
+  margin-top: 2px;
+  font-weight: 600;
+}

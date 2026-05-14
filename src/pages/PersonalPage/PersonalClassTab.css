@@ -1,0 +1,46 @@
+.personal-class-tab {
+  --background: #f4f1eb;
+}
+
+.personal-class-tab__inner {
+  padding: 32px 20px;
+  text-align: center;
+  max-width: 100%;
+}
+
+.personal-class-tab__icon-wrap {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  border-radius: 20px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.06);
+}
+
+.personal-class-tab__icon-wrap ion-icon {
+  font-size: 36px;
+  color: #e86a24;
+}
+
+.personal-class-tab__title {
+  margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.personal-class-tab__subtitle {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #7a7670;
+}
+
+.personal-class-tab__btn {
+  --background: #e86a24;
+  --border-radius: 14px;
+  font-weight: 600;
+}

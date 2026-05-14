@@ -1,0 +1,83 @@
+.app-root {
+  min-height: 100%;
+  color-scheme: light;
+}
+
+.app-stage {
+  min-height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 12px 0;
+  box-sizing: border-box;
+}
+
+/**
+ * ion-page внутри Ionic часто position: fixed и тянется на весь viewport.
+ * transform создаёт containing block — fixed привязывается к .phone-shell, а не к окну.
+ */
+.phone-shell {
+  /* Все страницы: не шире 420px; на узком экране — 100% ширины */
+  width: 100%;
+  max-width: 420px;
+  min-height: min(100dvh, 844px);
+  margin: 0 auto;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(40, 36, 32, 0.12);
+  background: #f4f1eb;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transform: translateZ(0);
+}
+
+/**
+ * Только корневой outlet в шелле должен забирать flex-высоту.
+ * Вложенный outlet внутри IonTabs с тем же правилом ломает цепочку: ion-page
+ * absolute/fill → у вкладок «нулевая» высота → пустой экран при смене табов.
+ */
+.phone-shell .app-main-router-outlet {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.phone-shell .app-main-router-outlet ion-tabs {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.phone-shell .app-main-router-outlet ion-tabs > ion-router-outlet {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+.phone-shell ion-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .app-stage {
+    padding: 0;
+  }
+
+  .phone-shell {
+    min-height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
