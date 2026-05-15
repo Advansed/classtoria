@@ -28,6 +28,12 @@
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
 }
 
+.profile-page__loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 16px;
+}
+
 .profile-page__inner {
   padding: 16px 16px 28px;
   box-sizing: border-box;

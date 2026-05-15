@@ -43,7 +43,6 @@
   width: 100%;
   max-width: 100%;
   align-self: stretch;
-  position: relative;
   display: flex;
   flex-direction: column;
 }
@@ -56,10 +55,13 @@
   flex-direction: column;
 }
 
+/**
+ * Не задавать position здесь: у ion-router-outlet в Ionic по умолчанию
+ * position: absolute + inset 0 — иначе контент вкладок не растягивается и остаётся пустым.
+ */
 .phone-shell .app-main-router-outlet ion-tabs > ion-router-outlet {
   flex: 1 1 auto;
   min-height: 0;
-  position: relative;
 }
 
 .phone-shell ion-page {

@@ -6,8 +6,6 @@ import './PersonalClassTab.css';
 const PersonalClassTab: React.FC = () => {
   const history = useHistory();
 
-  console.log('PersonalClassTab');
-
   return (
     <IonPage>
       <IonContent fullscreen className="personal-class-tab">

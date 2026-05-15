@@ -75,3 +75,6 @@ export async function post<T = unknown, B = unknown>(
 
   return (await res.json()) as ApiResponse<T>;
 }
+
+/** POST-запрос к API (например `api('profile', { token })`). */
+export const api = post;
