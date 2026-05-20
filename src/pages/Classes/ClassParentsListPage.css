@@ -1,0 +1,241 @@
+.class-members-list__header ion-toolbar {
+  --background: #f2f2f2;
+  --border-width: 0;
+  --color: #e86a24;
+}
+
+.class-members-list__back {
+  --color: #e86a24;
+  font-weight: 600;
+}
+
+.class-members-list__toolbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e86a24;
+}
+
+.class-members-list {
+  --background: #f2f2f2;
+}
+
+.class-members-list__scroll {
+  padding: 8px 16px 16px;
+  box-sizing: border-box;
+}
+
+.class-members-list__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.class-members-list__school {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.class-members-list__class {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #6b6560;
+}
+
+.class-members-list__top-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.class-members-list__year-select {
+  max-width: 120px;
+  font-size: 14px;
+  font-weight: 500;
+  --padding-start: 4px;
+  --padding-end: 4px;
+}
+
+.class-members-list__count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #eee;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+}
+
+.class-members-list__count-badge ion-icon {
+  font-size: 16px;
+  color: #e86a24;
+}
+
+.class-members-list__card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #eee;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  padding: 16px 14px;
+}
+
+.class-members-list__h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.class-members-list__empty {
+  margin: 0;
+  padding: 24px 8px;
+  text-align: center;
+  font-size: 14px;
+  color: #8a8580;
+}
+
+.class-members-list__table-wrap {
+  overflow-x: auto;
+}
+
+.class-members-list__table-head,
+.class-members-list__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.4fr) minmax(130px, 1.2fr) minmax(110px, 1fr) 36px;
+  gap: 8px;
+  align-items: center;
+}
+
+.class-members-list__table-head {
+  padding: 0 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9a9590;
+  border-bottom: 1px solid #eee;
+}
+
+.class-members-list__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.class-members-list__row {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f0eeea;
+}
+
+.class-members-list__row--editing {
+  background: #faf8f5;
+}
+
+.class-members-list__rows li:last-child .class-members-list__row {
+  border-bottom: none;
+}
+
+.class-members-list__text {
+  font-size: 13px;
+  color: #1a1a1a;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.class-members-list__input {
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --padding-top: 6px;
+  --padding-bottom: 6px;
+  font-size: 13px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.class-members-list__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.class-members-list__status--ok {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.class-members-list__status--pending {
+  background: #f0eeea;
+  color: #6b6560;
+}
+
+.class-members-list__status:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.class-members-list__row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #c4bfb6;
+  cursor: pointer;
+}
+
+.class-members-list__row-btn ion-icon {
+  font-size: 18px;
+}
+
+.class-members-list__edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.class-members-list__save,
+.class-members-list__cancel {
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 6px 8px;
+}
+
+.class-members-list__save {
+  background: #fce8dc;
+  color: #c55a1a;
+}
+
+.class-members-list__cancel {
+  background: #f0eeea;
+  color: #6b6560;
+  min-width: 28px;
+}
+
+.class-members-list__bottom-spacer {
+  height: 16px;
+}

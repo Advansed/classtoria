@@ -9,7 +9,7 @@ import {
 import { homeOutline, peopleOutline, personOutline } from 'ionicons/icons';
 import { Redirect, Route } from 'react-router-dom';
 import ProfileTab from './components/ProfileTab';
-import PersonalClassTab from './PersonalClassTab';
+import PersonalClassTab from '../Classes/PersonalClassTab';
 import PersonalHomeTab from './PersonalHomeTab';
 import './PersonalPage.css';
 

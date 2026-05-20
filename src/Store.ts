@@ -1,50 +1,156 @@
 import { create } from 'zustand';
+import { getClasses } from './pages/Classes/classesApi';
+import {
+  DEFAULT_PROFILE_IMAGE,
+  normalizeStoredImageKey,
+} from './pages/PersonalPage/components/avatarUpload';
+
+export { DEFAULT_PROFILE_IMAGE };
+
+/** Данные пользователя из ответа login (поле `user`). */
+export type AuthUser = {
+  name:                   string;
+  phone:                  string;
+  email:                  string;
+  image:                  string;
+  role?:                  string;
+};
 
 export type Profile = {
-  phone: string;
-  name: string;
-  email: string;
-  role: string;
-  /** URL или путь к аватару */
-  image: string;
+  phone:                  string;
+  name:                   string;
+  email:                  string;
+  role:                   string;
+  /** Ключ файла в хранилище, например `user_id/avatar.jpg` (не полный URL). */
+  image:                  string;
+};
+
+/** Класс внутри школы (`Class`: id, name). */
+export type SchoolClass = {
+  id:                     string;
+  name:                   string;
+};
+
+/** Школа из `get_classes` (`School` + вложенные классы). */
+export type UserSchool = {
+  id:                     string;
+  name:                   string;
+  region:                 string;
+  location:               string;
+  classes:                SchoolClass[];
+};
+
+/** Плоский класс с контекстом школы (для списков в UI). */
+export type UserClass = {
+  id:                     string;
+  name:                   string;
+  role:                   string;
+  schoolId:               string;
+  schoolName:             string;
+  region:                 string;
+  location:               string;
+};
+
+export type LoginSession = {
+  token:                  string;
+  user_id:                string | number;
+  user:                   Partial<AuthUser>;
 };
 
 type AppState = {
-  /** Признак успешной авторизации в приложении */
-  auth: boolean;
-  /** Токен сессии (JWT или строка с бэкенда) */
-  token: string | null;
-  profile: Profile | null;
-  setAuth: (value: boolean) => void;
-  setToken: (value: string | null) => void;
-  setProfile: (profile: Profile | null) => void;
-  updateProfile: (patch: Partial<Profile>) => void;
-  reset: () => void;
+  auth:                   boolean;
+  user_id:                string;
+  token:                  string | null;
+  profile:                Profile | null;
+  schools:                UserSchool[];
+  classes:                UserClass[];
+  setAuth:                (value: boolean) => void;
+  setUserId:              (value: string) => void;
+  setToken:               (value: string | null) => void;
+  setProfile:             (profile: Profile | null) => void;
+  updateProfile:          (patch: Partial<Profile>) => void;
+  setSchools:             (schools: UserSchool[]) => void;
+  setClasses:             (classes: UserClass[]) => void;
+  loadClasses:            () => Promise<void>;
+  applyLogin:             (session: LoginSession) => void;
+  reset:                  () => void;
 };
 
 const initialProfile: Profile = {
-  phone: '',
-  name: '',
-  email: '',
-  role: '',
-  image: '',
+  phone:                  '',
+  name:                   '',
+  email:                  '',
+  role:                   '',
+  image:                  '',
 };
 
-export const useStore = create<AppState>((set) => ({
-  auth: false,
-  token: null,
-  profile: null,
+const userToProfile = (user: Partial<AuthUser>): Profile => ({
+  phone:                  user.phone ?? '',
+  name:                   user.name ?? '',
+  email:                  user.email ?? '',
+  role:                   user.role ?? '',
+  image:                  normalizeStoredImageKey(user.image ?? ''),
+});
 
-  setAuth: (value) => set({ auth: value }),
+export const useStore = create<AppState>((set, get) => ({
+  auth:                   false,
+  user_id:                '',
+  token:                  null,
+  profile:                null,
+  schools:                [],
+  classes:                [],
 
-  setToken: (value) => set({ token: value }),
+  setAuth:                (value) => set({ auth: value }),
 
-  setProfile: (profile) => set({ profile }),
+  setUserId:              (value) => set({ user_id: value }),
 
-  updateProfile: (patch) =>
+  setToken:               (value) => set({ token: value }),
+
+  setProfile:             (profile) => set({ profile }),
+
+  updateProfile:          (patch) =>
     set((s) => ({
       profile: { ...(s.profile ?? initialProfile), ...patch },
     })),
 
-  reset: () => set({ auth: false, token: null, profile: null }),
+  setSchools:             (schools) => set({ schools }),
+
+  setClasses:             (classes) => set({ classes }),
+
+  loadClasses:            async () => {
+    const token = get().token;
+    if (!token?.trim()) {
+      set({ schools: [], classes: [] });
+      return;
+    }
+    try {
+      const { schools, classes } = await getClasses(token);
+      set({ schools, classes });
+    } catch {
+      set({ schools: [], classes: [] });
+    }
+  },
+
+  applyLogin:             ({ token, user_id, user }) => {
+    const trimmedToken = token.trim();
+    set({
+      auth: true,
+      token: trimmedToken,
+      user_id: String(user_id).trim(),
+      profile: userToProfile(user),
+      schools: [],
+      classes: [],
+    });
+    void get().loadClasses();
+  },
+
+  reset:                  () =>
+    set({
+      auth: false,
+      user_id: '',
+      token: null,
+      profile: null,
+      schools: [],
+      classes: [],
+    }),
 }));

@@ -1,5 +1,29 @@
 import { getClasstoriaWsUrl } from './api';
 
+function resolveWebSocketUrl(): string {
+  // Если мы на сервере (SSR), возвращаем пустую строку или дефолт
+  if (typeof window === 'undefined') return '';
+
+  const h = window.location.hostname;
+  const isLocal =
+    h === 'localhost' ||
+    h === '127.0.0.1' ||
+    h === '[::1]' ||
+    import.meta.env.DEV;
+
+  // На проде ВСЕГДА используем wss, на локалке — зависит от https (обычно ws)
+  const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+
+  if (isLocal) {
+    // Локально стучимся на текущий хост (например, localhost:8100/node/ws)
+    // где Vite или Ionic проксирует /node на порт 3020 Bun сервера
+    return `${wsProto}//${window.location.host}/node/ws`;
+  } else {
+    // На проде стучимся на реальный домен: wss://classtoria.ru/node/ws
+    return `wss://classtoria.ru/node/ws`;
+  }
+}
+
 type MessageHandler = (data: string) => void;
 type VoidHandler = () => void;
 
@@ -65,7 +89,7 @@ function openSocketIfNeeded(): void {
     return;
   }
 
-  socket = new WebSocket(getClasstoriaWsUrl());
+  socket = new WebSocket(resolveWebSocketUrl());
   attachListeners(socket);
 }
 

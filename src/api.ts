@@ -1,18 +1,40 @@
 export const API_BASE_URL = 'https://classtoria.ru/node/';
 
+/** Локальная разработка (vite/ionic :8100, LAN IP) — WS через прокси на Bun :3020 */
+function isLocalAppHost(hostname: string): boolean {
+  if (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]'
+  ) {
+    return true;
+  }
+  return (
+    /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+    /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+    /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname)
+  );
+}
+
 /**
- * WebSocket: в dev — `ws(s)://<ionic|vite>/node/ws` (прокси `^/node/` в vite, не цепляет `/node_modules`).
- * В prod — из `API_BASE_URL`. Явно: `VITE_WS_URL`.
+ * WebSocket: локально — `ws(s)://<host>/node/ws` (vite proxy → Bun).
+ * На проде — из `API_BASE_URL` или `VITE_WS_URL`.
  */
+/** URL WebSocket для текущей страницы (локально — всегда через vite/ionic proxy). */
 export function getClasstoriaWsUrl(): string {
+  if (typeof window !== 'undefined') {
+    const { hostname, protocol, host } = window.location;
+    if (isLocalAppHost(hostname) || import.meta.env.DEV) {
+      const wsProto = protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${wsProto}//${host}/node/ws`;
+    }
+  }
+
   const explicit = import.meta.env.VITE_WS_URL?.trim();
   if (explicit) {
     return explicit;
   }
-  if (typeof window !== 'undefined' && import.meta.env.DEV) {
-    const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${wsProto}//${window.location.host}/node/ws`;
-  }
+
   const u = new URL(API_BASE_URL);
   const wsProto = u.protocol === 'https:' ? 'wss:' : 'ws:';
   const path = `${u.pathname.replace(/\/?$/, '')}/ws`;
@@ -35,6 +57,14 @@ export interface ApiResponse<T = unknown> {
   passwordHash?: string;
   auth_code?: string;
   authCode?: string;
+  user_id?: string | number;
+  user?: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    image?: string;
+    role?: string;
+  };
 }
 
 export async function get<T = unknown>(

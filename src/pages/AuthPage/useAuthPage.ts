@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { post, type ApiResponse } from '../../api';
 import {
+  clearAuthCookies,
   normalizePhoneDigits,
   readLastPhoneDisplay,
   readStoredAuth,
@@ -10,7 +11,7 @@ import {
   setLoggedInCookie,
 } from '../../authCookies';
 import { useToast } from '../../hooks/useToast';
-import { useStore } from '../../Store';
+import { useStore, type AuthUser } from '../../Store';
 import {
   socketAcquire,
   socketRelease,
@@ -21,20 +22,30 @@ import {
 
 type Transport = 'max' | 'telegram' | 'sms';
 
-const DEFAULT_PROFILE_IMAGE = '/images/auth-feature.png';
+const readAuthUser = (raw: ApiResponse<unknown>['user']): Partial<AuthUser> => {
+  if (!raw || typeof raw !== 'object') {
+    return {};
+  }
+  return {
+    name: typeof raw.name === 'string' ? raw.name : '',
+    phone: typeof raw.phone === 'string' ? raw.phone : '',
+    email: typeof raw.email === 'string' ? raw.email : '',
+    image: typeof raw.image === 'string' ? raw.image : '',
+    role: typeof raw.role === 'string' ? raw.role : '',
+  };
+};
 
 const applyLoginToStore = (res: ApiResponse<unknown>) => {
-  const raw = res.token;
   const token =
-    typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : null;
-  useStore.getState().setAuth(true);
-  useStore.getState().setToken(token);
-  useStore.getState().setProfile({
-    phone:     '',
-    name:      '',
-    email:     '',
-    role:      '',
-    image:     DEFAULT_PROFILE_IMAGE,
+    typeof res.token === 'string' && res.token.trim().length > 0 ? res.token.trim() : null;
+  if (!token) {
+    return;
+  }
+
+  useStore.getState().applyLogin({
+    token,
+    user_id: res.user_id ?? '',
+    user: readAuthUser(res.user),
   });
 };
 
@@ -225,6 +236,11 @@ export const useAuthPage = () => {
   const [phoneError, setPhoneError] = useState('');
   const [transportError, setTransportError] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [hasStoredPassword, setHasStoredPassword] = useState(() => readStoredAuth() !== null);
+
+  const refreshStoredPassword = useCallback(() => {
+    setHasStoredPassword(readStoredAuth() !== null);
+  }, []);
 
   const handlePhoneChange = (value: string) => {
     const next = formatPhone(value);
@@ -409,6 +425,7 @@ export const useAuthPage = () => {
       });
 
       savePasswordHashCookies(phone, passwordHash);
+      refreshStoredPassword();
 
       const loginResponse = await post('login', {
         phone,
@@ -440,27 +457,33 @@ export const useAuthPage = () => {
     }
   };
 
-  const handleAuthorize = async () => {
+  /** Вход по ключу из cookies; при неудаче — false (дальше сценарий MAX). */
+  const tryLoginWithStoredKey = async (): Promise<boolean> => {
     if (!phone.trim()) {
       setPhoneError('Введите номер телефона');
       toast.warning('Введите номер телефона');
-      return;
+      return false;
     }
 
     const stored = readStoredAuth();
     if (!stored) {
-      toast.warning('Сначала подтвердите номер (MAX или другой канал)');
-      return;
+      return false;
     }
 
     const currentDigits = normalizePhoneDigits(phone);
+    if (!currentDigits || currentDigits.length < 11) {
+      setPhoneError('Введите полный номер телефона');
+      toast.warning('Введите полный номер телефона');
+      return false;
+    }
+
     if (currentDigits !== stored.phoneDigits) {
-      toast.warning('Для этого номера нет сохранённого ключа на устройстве');
-      return;
+      clearAuthCookies();
+      refreshStoredPassword();
+      return false;
     }
 
     setPhoneError('');
-    setIsSending(true);
     try {
       const response = await post('login', {
         phone,
@@ -468,18 +491,19 @@ export const useAuthPage = () => {
       });
 
       if (!response.success) {
-        toast.error(response.message ?? 'Не удалось авторизоваться');
-        return;
+        clearAuthCookies();
+        refreshStoredPassword();
+        return false;
       }
 
       toast.success(response.message ?? 'Успешный вход');
       setLoggedInCookie();
       applyLoginToStore(response);
       history.replace('/personal/home');
+      return true;
     } catch {
       toast.error('Ошибка сети. Попробуйте снова');
-    } finally {
-      setIsSending(false);
+      return false;
     }
   };
 
@@ -555,6 +579,7 @@ export const useAuthPage = () => {
       }
 
       savePasswordHashCookies(phone, passwordHash);
+      refreshStoredPassword();
       toast.success(response.message ?? 'Номер подтверждён, ключ сохранён на этом устройстве');
       selectAuthorizeFlow();
     } catch {
@@ -564,7 +589,7 @@ export const useAuthPage = () => {
     }
   };
 
-  const primaryButtonLabel = smsFlow ? 'Проверить код' : 'Авторизироваться';
+  const primaryButtonLabel = smsFlow ? 'Проверить код' : 'Войти';
 
   const smsHintText =
     'Получите код в выбранном канале. Регистрация и восстановление проходят одинаково.';
@@ -576,13 +601,27 @@ export const useAuthPage = () => {
       await handleVerifySms();
       return;
     }
-    await handleAuthorize();
+
+    if (hasStoredPassword) {
+      setIsSending(true);
+      try {
+        const loggedIn = await tryLoginWithStoredKey();
+        if (loggedIn) {
+          return;
+        }
+      } finally {
+        setIsSending(false);
+      }
+    }
+
+    await handleAuthorizeViaMax();
   };
 
   return {
     phone,
     sms,
     smsFlow,
+    hasStoredPassword,
     showSmsOption,
     transport,
     phoneError,
@@ -599,6 +638,5 @@ export const useAuthPage = () => {
     selectAuthorizeFlow,
     handleSendCode,
     handlePrimaryAction,
-    handleAuthorizeViaMax,
   };
 };

@@ -2,23 +2,27 @@ import {
   IonButton,
   IonContent,
   IonIcon,
+  IonInput,
   IonPage,
   IonSpinner,
 } from '@ionic/react';
 import {
   callOutline,
+  cameraOutline,
   checkmarkCircle,
   chevronBackOutline,
   chevronForwardOutline,
+  mailOutline,
   peopleOutline,
   personOutline,
   ribbonOutline,
   schoolOutline,
   shieldCheckmarkOutline,
 } from 'ionicons/icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { clearAuthCookies } from '../../../authCookies';
+import { useClassesStore } from '../../Classes/classesStore';
 import { useStore } from '../../../Store';
 import { useProfile } from './useProfile';
 import './ProfileTab.css';
@@ -44,8 +48,23 @@ const parseRoleId = (role: string | undefined): RoleId => {
 /** Вкладка «Профиль» внутри PersonalPage. Корень — IonPage (требование IonTabs для стека). */
 const ProfileTab: React.FC = () => {
   const history = useHistory();
-  const { profile, loading } = useProfile();
+  const {
+    profile,
+    avatarDisplayUrl,
+    loading,
+    saving,
+    uploadingAvatar,
+    name,
+    setName,
+    email,
+    setEmail,
+    isDirty,
+    save,
+    uploadAvatar,
+  } = useProfile();
   const [activeRole, setActiveRole] = useState<RoleId>('parent');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (profile?.role) {
@@ -53,19 +72,62 @@ const ProfileTab: React.FC = () => {
     }
   }, [profile?.role]);
 
+  useEffect(
+    () => () => {
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    },
+    [avatarPreview],
+  );
+
   const handleLogout = () => {
     clearAuthCookies();
     useStore.getState().reset();
+    useClassesStore.getState().reset();
     history.replace('/start');
   };
 
-  const avatarSrc = profile?.image?.trim() || FALLBACK_AVATAR;
-  const displayName = profile?.name?.trim() || '—';
+  const avatarSrc = avatarPreview || avatarDisplayUrl || FALLBACK_AVATAR;
   const displayPhone = profile?.phone?.trim() || '—';
   const displayRole = roleLabel[activeRole];
 
   const rolePillIcon =
     activeRole === 'parent' ? peopleOutline : activeRole === 'teacher' ? schoolOutline : personOutline;
+
+  const handleAvatarPick = () => {
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+
+    const preview = URL.createObjectURL(file);
+    setAvatarPreview((prev) => {
+      if (prev) {
+        URL.revokeObjectURL(prev);
+      }
+      return preview;
+    });
+
+    void (async () => {
+      try {
+        await uploadAvatar(file);
+      } finally {
+        setAvatarPreview((current) => {
+          if (current === preview) {
+            URL.revokeObjectURL(preview);
+            return null;
+          }
+          return current;
+        });
+      }
+    })();
+  };
 
   return (
     <IonPage>
@@ -75,7 +137,14 @@ const ProfileTab: React.FC = () => {
             <IonIcon slot="icon-only" icon={chevronBackOutline} aria-hidden />
           </IonButton>
           <h1 className="personal-profile-tab__title">Профиль</h1>
-          <img src={avatarSrc} alt="" className="personal-profile-tab__header-avatar" width={32} height={32} />
+          <img
+            key={avatarSrc}
+            src={avatarSrc}
+            alt=""
+            className="personal-profile-tab__header-avatar"
+            width={32}
+            height={32}
+          />
         </div>
 
         {loading && !profile ? (
@@ -85,39 +154,105 @@ const ProfileTab: React.FC = () => {
         ) : (
           <div className="profile-page__inner">
             <section className="profile-page__card profile-page__user-card">
-              <div className="profile-page__user-left">
-                <div className="profile-page__avatar-lg-wrap">
-                  <img src={avatarSrc} alt="" className="profile-page__avatar-lg" width={96} height={96} />
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="profile-page__avatar-input"
+                aria-hidden
+                tabIndex={-1}
+                onChange={handleAvatarChange}
+              />
+              <div className="profile-page__user-top">
+                <button
+                  type="button"
+                  className="profile-page__avatar-btn"
+                  onClick={handleAvatarPick}
+                  disabled={uploadingAvatar}
+                  aria-label="Изменить аватар"
+                >
+                  <div className="profile-page__avatar-lg-wrap">
+                    <img
+                    key={avatarSrc}
+                    src={avatarSrc}
+                    alt=""
+                    className="profile-page__avatar-lg"
+                    width={96}
+                    height={96}
+                  />
+                    {uploadingAvatar ? (
+                      <span className="profile-page__avatar-overlay" aria-hidden>
+                        <IonSpinner name="crescent" />
+                      </span>
+                    ) : (
+                      <span className="profile-page__avatar-overlay" aria-hidden>
+                        <IonIcon icon={cameraOutline} />
+                      </span>
+                    )}
+                  </div>
+                </button>
+                <div className="profile-page__user-meta">
+                  <div className="profile-page__field">
+                    <span className="profile-page__field-label">
+                      <IonIcon icon={callOutline} aria-hidden />
+                      Телефон
+                    </span>
+                    <p className="profile-page__field-value">{displayPhone}</p>
+                  </div>
+                  <div className="profile-page__field">
+                    <span className="profile-page__field-label">
+                      <IonIcon icon={shieldCheckmarkOutline} aria-hidden />
+                      Роль
+                    </span>
+                    <span className="profile-page__role-pill">
+                      <IonIcon icon={rolePillIcon} aria-hidden />
+                      {displayRole}
+                    </span>
+                  </div>
                 </div>
-                <span className="profile-page__role-pill">
-                  <IonIcon icon={rolePillIcon} aria-hidden />
-                  {displayRole}
-                </span>
               </div>
-              <div className="profile-page__user-fields">
-                <div className="profile-page__field">
-                  <span className="profile-page__field-label">
+              <div className="profile-page__user-editable">
+                <div className="profile-page__field profile-page__field--wide">
+                  <label className="profile-page__field-label" htmlFor="profile-name">
                     <IonIcon icon={personOutline} aria-hidden />
                     ФИО
-                  </span>
-                  <p className="profile-page__field-value">{displayName}</p>
+                  </label>
+                  <IonInput
+                    id="profile-name"
+                    className="profile-page__input"
+                    value={name}
+                    placeholder="Введите ФИО"
+                    onIonInput={(e) => setName(e.detail.value ?? '')}
+                  />
                 </div>
-                <div className="profile-page__field">
-                  <span className="profile-page__field-label">
-                    <IonIcon icon={callOutline} aria-hidden />
-                    Телефон
-                  </span>
-                  <p className="profile-page__field-value">{displayPhone}</p>
-                </div>
-                <div className="profile-page__field">
-                  <span className="profile-page__field-label">
-                    <IonIcon icon={shieldCheckmarkOutline} aria-hidden />
-                    Текущая роль
-                  </span>
-                  <p className="profile-page__field-value">{displayRole}</p>
+                <div className="profile-page__field profile-page__field--wide">
+                  <label className="profile-page__field-label" htmlFor="profile-email">
+                    <IonIcon icon={mailOutline} aria-hidden />
+                    Email
+                  </label>
+                  <IonInput
+                    id="profile-email"
+                    type="email"
+                    inputMode="email"
+                    className="profile-page__input"
+                    value={email}
+                    placeholder="email@example.com"
+                    onIonInput={(e) => setEmail(e.detail.value ?? '')}
+                  />
                 </div>
               </div>
             </section>
+
+            {isDirty && (
+              <IonButton
+                expand="block"
+                className="profile-page__save"
+                disabled={saving}
+                onClick={() => void save()}
+              >
+                {saving ? <IonSpinner name="crescent" /> : 'Сохранить'}
+              </IonButton>
+            )}
 
             <button type="button" className="profile-page__banner">
               <IonIcon icon={ribbonOutline} className="profile-page__banner-icon" aria-hidden />

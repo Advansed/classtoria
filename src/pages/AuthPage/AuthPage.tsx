@@ -59,12 +59,10 @@ const AuthPage: React.FC = () => {
     revealSmsOption,
     selectSmsFlow,
     selectAuthorizeFlow,
+    hasStoredPassword,
     handlePrimaryAction,
     handleSendCode,
-    handleAuthorizeViaMax,
   } = useAuthPage();
-
-  const submitLabel = smsFlow ? primaryButtonLabel : 'Войти';
 
   useEffect(() => {
     const el = carouselRef.current;
@@ -150,12 +148,14 @@ const AuthPage: React.FC = () => {
                     />
                   </div>
 
-                  <p className="auth-page__links-text auth-page__links-text--secondary">
-                    Уже есть ключ на устройстве?{' '}
-                    <button type="button" className="auth-page__inline-link" onClick={selectAuthorizeFlow}>
-                      Войти по сохранённому ключу
-                    </button>
-                  </p>
+                  {hasStoredPassword ? (
+                    <p className="auth-page__links-text auth-page__links-text--secondary">
+                      Уже есть ключ на устройстве?{' '}
+                      <button type="button" className="auth-page__inline-link" onClick={selectAuthorizeFlow}>
+                        Войти по сохранённому ключу
+                      </button>
+                    </p>
+                  ) : null}
 
                   <p className="auth-page__transport-title">{smsHintText}</p>
                   <div className="auth-page__transport-list">
@@ -211,29 +211,16 @@ const AuthPage: React.FC = () => {
                 onClick={() => void handlePrimaryAction()}
                 disabled={isSending}
               >
-                {submitLabel}
+                {primaryButtonLabel}
               </IonButton>
 
               {!smsFlow && (
-                <div className="auth-page__alt-actions">
-                  <p className="auth-page__links-text">
-                    Нет аккаунта или новое устройство?{' '}
-                    <button
-                      type="button"
-                      className="auth-page__inline-link"
-                      disabled={isSending}
-                      onClick={() => void handleAuthorizeViaMax()}
-                    >
-                      Войти через MAX
-                    </button>
-                  </p>
-                  <p className="auth-page__links-text">
-                    Подтвердить номер по SMS или Telegram —{' '}
-                    <button type="button" className="auth-page__inline-link" onClick={selectSmsFlow}>
-                      другой способ
-                    </button>
-                  </p>
-                </div>
+                <p className="auth-page__links-text auth-page__alt-actions">
+                  Подтвердить номер по SMS или Telegram —{' '}
+                  <button type="button" className="auth-page__inline-link" onClick={selectSmsFlow}>
+                    другой способ
+                  </button>
+                </p>
               )}
             </section>
 

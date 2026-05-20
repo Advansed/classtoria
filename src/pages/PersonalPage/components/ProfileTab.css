@@ -50,23 +50,86 @@
 
 .profile-page__user-card {
   display: flex;
+  flex-direction: column;
   gap: 16px;
   margin-bottom: 14px;
 }
 
-.profile-page__user-left {
+.profile-page__user-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.profile-page__user-meta {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.profile-page__user-editable {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.profile-page__field--wide {
+  width: 100%;
+}
+
+.profile-page__field--wide .profile-page__input {
+  width: 100%;
+}
+
+.profile-page__avatar-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.profile-page__avatar-btn {
+  position: relative;
   flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.profile-page__avatar-btn:disabled {
+  cursor: wait;
 }
 
 .profile-page__avatar-lg-wrap {
+  position: relative;
   border-radius: 50%;
   overflow: hidden;
   border: 3px solid #fff;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.profile-page__avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.38);
+  color: #fff;
+  font-size: 28px;
+}
+
+.profile-page__avatar-overlay ion-spinner {
+  width: 32px;
+  height: 32px;
+  --color: #fff;
 }
 
 .profile-page__avatar-lg {
@@ -87,19 +150,11 @@
   color: #c55a1a;
   background: rgba(232, 106, 36, 0.14);
   border: 1px solid rgba(232, 106, 36, 0.25);
+  align-self: flex-start;
 }
 
 .profile-page__role-pill ion-icon {
   font-size: 14px;
-}
-
-.profile-page__user-fields {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding-top: 4px;
 }
 
 .profile-page__field-label {
@@ -122,6 +177,27 @@
   font-weight: 700;
   color: #1a1a1a;
   line-height: 1.3;
+}
+
+.profile-page__input {
+  --background: #f8f6f2;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --padding-top: 10px;
+  --padding-bottom: 10px;
+  border: 1px solid #e8e4dc;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.profile-page__save {
+  margin-bottom: 14px;
+  --background: #e86a24;
+  --background-activated: #d45e1f;
+  --border-radius: 14px;
+  font-weight: 600;
 }
 
 .profile-page__banner {

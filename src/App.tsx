@@ -3,7 +3,8 @@ import { IonReactRouter } from '@ionic/react-router';
 import { Route } from 'react-router-dom';
 import { PrivateRoute, RootRedirect } from './authRouteGates';
 import Page from './pages/Page';
-import ClassCabinetPage from './pages/ClassCabinetPage';
+import ClassCabinetPage from './pages/Classes/ClassCabinetPage';
+import ClassParentsListPage from './pages/Classes/ClassParentsListPage';
 import AuthPage from './pages/AuthPage/AuthPage';
 import PersonalPage from './pages/PersonalPage/PersonalPage';
 import StartPage from './pages/StartPage/StartPage';
@@ -31,8 +32,15 @@ const App: React.FC = () => {
                   <PersonalPage />
                 </PrivateRoute>
               </Route>
+              <Route path="/class-cabinet/parents" exact={true}>
+                <PrivateRoute>
+                  <ClassParentsListPage />
+                </PrivateRoute>
+              </Route>
               <Route path="/class-cabinet" exact={true}>
-                <ClassCabinetPage />
+                <PrivateRoute>
+                  <ClassCabinetPage />
+                </PrivateRoute>
               </Route>
               <Route path="/auth" exact={true}>
                 <AuthPage />
