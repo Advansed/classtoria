@@ -1,5 +1,10 @@
 import { create } from 'zustand';
-import { getClass } from './classesApi';
+import {
+  addCollection as addCollectionApi,
+  addEvent as addEventApi,
+  addMember as addMemberApi,
+  getClass,
+} from './classesApi';
 import type { ClassDetail, GetClassParams, OpenClassParams } from './types';
 import {
   countMembersByRole,
@@ -7,6 +12,8 @@ import {
   filterStudents,
   upsertClassInList,
 } from './utils';
+
+export { isClassAdminRole } from './utils';
 import type { ClassMember } from './types';
 
 export type {
@@ -15,6 +22,7 @@ export type {
   ClassEvent,
   ClassImage,
   ClassMember,
+  ClassStats,
   ClassTeacher,
   GetClassParams,
   OpenClassParams,
@@ -37,6 +45,31 @@ type ClassesState = {
     memberId: string,
     patch: Partial<Pick<ClassMember, 'name' | 'phone' | 'authorized'>>,
   ) => void;
+  addMember:              (params: {
+    token: string;
+    classId: string;
+    phone: string;
+    role: string;
+    schoolId?: string;
+    name?: string;
+  }) => Promise<{ success: boolean; message: string | null }>;
+  addEvent:               (params: {
+    token: string;
+    classId: string;
+    name: string;
+    date: string;
+    description?: string;
+    schoolId?: string;
+    className?: string;
+  }) => Promise<{ success: boolean; message: string | null }>;
+  addCollection:          (params: {
+    token: string;
+    classId: string;
+    eventId: string;
+    name: string;
+    schoolId?: string;
+    className?: string;
+  }) => Promise<{ success: boolean; message: string | null }>;
   reset:                  () => void;
 };
 
@@ -116,6 +149,54 @@ export const useClassesStore = create<ClassesState>((set, get) => ({
   },
 
   openClass:              async (params) => get().loadClass(params),
+
+  addMember:              async ({ token, classId, phone, role, schoolId, name }) => {
+    const res = await addMemberApi({ token, classId, phone, role });
+    if (!res.success) {
+      return {
+        success: false,
+        message: res.message ?? 'Не удалось добавить участника',
+      };
+    }
+
+    await get().loadClass({ token, classId, schoolId, name });
+    return {
+      success: true,
+      message: res.message ?? 'Участник добавлен',
+    };
+  },
+
+  addEvent:               async ({ token, classId, name, date, description, schoolId, className }) => {
+    const res = await addEventApi({ token, classId, name, date, description });
+    if (!res.success) {
+      return {
+        success: false,
+        message: res.message ?? 'Не удалось создать событие',
+      };
+    }
+
+    await get().loadClass({ token, classId, schoolId, name: className });
+    return {
+      success: true,
+      message: res.message ?? 'Событие создано',
+    };
+  },
+
+  addCollection:          async ({ token, classId, eventId, name, schoolId, className }) => {
+    const res = await addCollectionApi({ token, eventId, name });
+    if (!res.success) {
+      return {
+        success: false,
+        message: res.message ?? 'Не удалось создать коллекцию',
+      };
+    }
+
+    await get().loadClass({ token, classId, schoolId, name: className });
+    return {
+      success: true,
+      message: res.message ?? 'Коллекция создана',
+    };
+  },
 
   reset:                  () =>
     set({

@@ -93,7 +93,7 @@ const StartPage: React.FC = () => {
               fill="clear"
               size="small"
               className="start-page__secondary-btn"
-              onClick={() => history.push('/class-cabinet')}
+              onClick={() => history.push('/personal/class/cabinet')}
             >
               Кабинет класса
             </IonButton>

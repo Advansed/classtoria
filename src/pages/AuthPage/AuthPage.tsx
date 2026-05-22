@@ -46,8 +46,6 @@ const AuthPage: React.FC = () => {
     phone,
     sms,
     smsFlow,
-    showSmsOption,
-    transport,
     phoneError,
     transportError,
     isSending,
@@ -55,8 +53,6 @@ const AuthPage: React.FC = () => {
     smsHintText,
     handlePhoneChange,
     handleSmsChange,
-    handleTransportSelect,
-    revealSmsOption,
     selectSmsFlow,
     selectAuthorizeFlow,
     hasStoredPassword,
@@ -158,50 +154,15 @@ const AuthPage: React.FC = () => {
                   ) : null}
 
                   <p className="auth-page__transport-title">{smsHintText}</p>
-                  <div className="auth-page__transport-list">
-                    <IonButton
-                      fill={transport === 'max' ? 'solid' : 'outline'}
-                      className="auth-page__transport-button"
-                      onClick={() => handleTransportSelect('max')}
-                      disabled={isSending}
-                    >
-                      MAX
-                    </IonButton>
-                    <IonButton
-                      fill={transport === 'telegram' ? 'solid' : 'outline'}
-                      className="auth-page__transport-button"
-                      onClick={() => handleTransportSelect('telegram')}
-                      disabled={isSending}
-                    >
-                      Telegram
-                    </IonButton>
-                    {showSmsOption && (
-                      <IonButton
-                        fill={transport === 'sms' ? 'solid' : 'outline'}
-                        className="auth-page__transport-button"
-                        onClick={() => handleTransportSelect('sms')}
-                        disabled={isSending}
-                      >
-                        SMS
-                      </IonButton>
-                    )}
-                  </div>
                   {transportError && <p className="auth-page__error">{transportError}</p>}
-                  {!showSmsOption && (
-                    <button type="button" className="auth-page__show-more" onClick={revealSmsOption}>
-                      Если ничего из списка нет
-                    </button>
-                  )}
-                  {transport && (
-                    <IonButton
-                      expand="block"
-                      className="auth-page__submit auth-page__submit--after-sms"
-                      onClick={() => void handleSendCode()}
-                      disabled={isSending}
-                    >
-                      Получить код
-                    </IonButton>
-                  )}
+                  <IonButton
+                    expand="block"
+                    className="auth-page__submit auth-page__submit--after-sms"
+                    onClick={() => void handleSendCode()}
+                    disabled={isSending}
+                  >
+                    Получить код
+                  </IonButton>
                 </div>
               )}
 
@@ -216,7 +177,7 @@ const AuthPage: React.FC = () => {
 
               {!smsFlow && (
                 <p className="auth-page__links-text auth-page__alt-actions">
-                  Подтвердить номер по SMS или Telegram —{' '}
+                  Подтвердить номер по SMS —{' '}
                   <button type="button" className="auth-page__inline-link" onClick={selectSmsFlow}>
                     другой способ
                   </button>

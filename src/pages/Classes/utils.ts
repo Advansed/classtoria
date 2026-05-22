@@ -1,11 +1,14 @@
-import type { UserClass, UserSchool } from '../../Store';
+import type { SchoolClass, UserClass, UserSchool } from '../../Store';
+import { normalizeEventDate } from './components/eventFormUtils';
 import type {
   ClassCollection,
   ClassDetail,
   ClassEvent,
   ClassImage,
   ClassMember,
+  ClassStats,
   ClassTeacher,
+  EventComment,
 } from './types';
 
 export const readStr = (value: unknown): string =>
@@ -52,8 +55,10 @@ export const parseClassImage = (row: unknown): ClassImage | null => {
   const o = row as Record<string, unknown>;
   return {
     date: readStr(o.date),
-    preview: readStr(o.preview ?? o.thumb ?? o.thumbnail),
-    file: readStr(o.file ?? o.url ?? o.src),
+    preview: readStr(
+      o.previewurl ?? o.preview_url ?? o.preview ?? o.thumb ?? o.thumbnail,
+    ),
+    file: readStr(o.fileurl ?? o.file_url ?? o.file ?? o.url ?? o.src),
   };
 };
 
@@ -66,11 +71,38 @@ export const parseClassCollection = (row: unknown): ClassCollection | null => {
     .map(parseClassImage)
     .filter((item): item is ClassImage => item !== null);
 
+  const idRaw = o.id ?? o.collection_id ?? o.collectionId;
+  const id = idRaw != null ? String(idRaw).trim() : '';
+  const creatorName =
+    readStr(o.creator_name ?? o.creatorName ?? o.author ?? o.author_name ?? o.authorName);
+
   return {
+    ...(id ? { id } : {}),
     date: readStr(o.date),
     name: readStr(o.name),
     title: readStr(o.title),
+    ...(creatorName ? { creatorName } : {}),
     images,
+  };
+};
+
+export const parseEventComment = (row: unknown): EventComment | null => {
+  if (!row || typeof row !== 'object') {
+    return null;
+  }
+  const o = row as Record<string, unknown>;
+  const idRaw = o.id ?? o.comment_id ?? o.commentId;
+  const text = readStr(o.text ?? o.message ?? o.body ?? o.content);
+  const authorName = readStr(o.author_name ?? o.authorName ?? o.name ?? o.user_name);
+  if (!text || !authorName) {
+    return null;
+  }
+  return {
+    id: idRaw != null && idRaw !== '' ? String(idRaw) : `${authorName}-${text.slice(0, 24)}`,
+    authorName,
+    authorRole: readStr(o.author_role ?? o.authorRole ?? o.role),
+    text,
+    avatar: readStr(o.avatar ?? o.image ?? o.photo) || undefined,
   };
 };
 
@@ -83,15 +115,34 @@ export const parseClassEvent = (row: unknown): ClassEvent | null => {
     .map(parseClassCollection)
     .filter((item): item is ClassCollection => item !== null);
 
-  const title = readStr(o.title);
+  const comments = parseJsonArray(o.comments)
+    .map(parseEventComment)
+    .filter((item): item is EventComment => item !== null);
+
+  const title = readStr(o.title) || readStr(o.name);
   if (!title) {
     return null;
   }
 
+  const idRaw = o.id ?? o.event_id ?? o.eventId;
+  const id = idRaw != null ? String(idRaw).trim() : '';
+
+  const dateRaw =
+    o.period ?? o.date ?? o.event_date ?? o.eventDate ?? o.datetime ?? o.created_at ?? o.createdAt;
+  const date = normalizeEventDate(dateRaw);
+  const description =
+    readStr(o.description) || readStr(o.desc) || readStr(o.about) || readStr(o.text);
+
+  const videoCount = readNum(o.video_count ?? o.videoCount ?? o.videos ?? o.video);
+
   return {
+    ...(id ? { id } : {}),
     title,
-    date: readStr(o.date),
+    date,
+    ...(description ? { description } : {}),
     collections,
+    ...(comments.length > 0 ? { comments } : {}),
+    ...(videoCount > 0 ? { videoCount } : {}),
   };
 };
 
@@ -178,19 +229,97 @@ const readNum = (value: unknown): number => {
   return 0;
 };
 
+const EMPTY_CLASS_STATS: ClassStats = {
+  events: 0,
+  collections: 0,
+  photos: 0,
+  comments: 0,
+};
+
+export const parseClassStats = (raw: unknown): ClassStats => {
+  if (!raw || typeof raw !== 'object') {
+    return EMPTY_CLASS_STATS;
+  }
+  const o = raw as Record<string, unknown>;
+  return {
+    events: readNum(o.events ?? o.event_count ?? o.events_count),
+    collections: readNum(o.collections ?? o.collection_count ?? o.collections_count),
+    photos: readNum(o.photos ?? o.photo_count ?? o.photos_count ?? o.images),
+    comments: readNum(o.comments ?? o.comment_count ?? o.comments_count),
+  };
+};
+
+const looksLikePhone = (value: string): boolean => {
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 10;
+};
+
 export const parseClassTeacher = (raw: unknown): ClassTeacher => {
   if (!raw || typeof raw !== 'object') {
-    return { id: '', name: '', image: '', achievements: 0, gratitudes: 0 };
+    return { id: '', name: '', phone: '', image: '', achievements: 0, gratitudes: 0 };
   }
   const o = raw as Record<string, unknown>;
   const id = o.id ?? o.user_id ?? o.userId;
-  const name = o.name;
+  let name = readStr(o.name);
+  let phone = readStr(o.phone ?? o.phone_number ?? o.phoneNumber);
+
+  if (!phone && looksLikePhone(name)) {
+    phone = name;
+    name = '';
+  }
+
   return {
     id: id != null && id !== '' ? String(id) : '',
-    name: typeof name === 'string' ? name.trim() : '',
+    name,
+    phone,
     image: readStr(o.image ?? o.avatar ?? o.photo),
     achievements: readNum(o.achievements ?? o.achievements_count ?? o.achievement_count),
     gratitudes: readNum(o.gratitudes ?? o.gratitude_count ?? o.thanks ?? o.thanks_count),
+  };
+};
+
+/** Данные карточки классного руководителя на экране белого списка. */
+export const resolveWhitelistTeacher = (
+  classTeacher: ClassTeacher | undefined,
+  teacherMembers: ClassMember[],
+  members: ClassMember[] | undefined,
+): {
+  member: ClassMember | undefined;
+  name: string;
+  phone: string;
+  image: string;
+  inWhitelist: boolean;
+  authorized: boolean;
+} => {
+  const headId = classTeacher?.id?.trim();
+  let member: ClassMember | undefined = teacherMembers[0];
+  if (!member && headId && members) {
+    member = members.find((m) => m.id === headId);
+  }
+
+  let name = member?.name?.trim() || classTeacher?.name?.trim() || '';
+  let phone = member?.phone?.trim() || classTeacher?.phone?.trim() || '';
+
+  /* Не показывать номер как ФИО: если в name только телефон — оставить одну строку с номером. */
+  if (looksLikePhone(name)) {
+    if (!phone) {
+      phone = name;
+    }
+    name = '';
+  }
+
+  const inWhitelist = Boolean(
+    member &&
+      (teacherMembers.some((m) => m.id === member!.id) || isTeacherRole(member.role)),
+  );
+
+  return {
+    member,
+    name,
+    phone,
+    image: classTeacher?.image?.trim() || '',
+    inWhitelist,
+    authorized: member?.authorized ?? false,
   };
 };
 
@@ -199,6 +328,15 @@ export const isStudentRole = (role: string): boolean =>
 
 export const isParentRole = (role: string): boolean =>
   /родител|parent/i.test(role);
+
+export const isTeacherRole = (role: string): boolean =>
+  /учител|teacher|классный/i.test(role);
+
+export const filterTeachers = (members: ClassMember[]): ClassMember[] =>
+  members.filter((m) => isTeacherRole(m.role));
+
+export const isClassAdminRole = (role: string): boolean =>
+  role.trim().toLowerCase() === 'admin';
 
 export const countMembersByRole = (members: ClassMember[]): {
   studentCount: number;
@@ -234,13 +372,15 @@ export const parseClassDetail = (
   return {
     id: String(id),
     name: name || fallback.name || '',
+    role: readStr(o.role ?? o.user_role ?? o.my_role ?? o.class_role),
     teacher: parseClassTeacher(o.teacher ?? o.class_teacher ?? o.classTeacher),
     members,
     events,
+    stats: parseClassStats(o.stats),
   };
 };
 
-export const parseSchoolClassRow = (row: unknown): Pick<UserClass, 'id' | 'name'> | null => {
+export const parseSchoolClassRow = (row: unknown): SchoolClass | null => {
   if (!row || typeof row !== 'object') {
     return null;
   }
@@ -258,6 +398,7 @@ export const parseSchoolClassRow = (row: unknown): Pick<UserClass, 'id' | 'name'
   return {
     id: String(id),
     name: name.trim(),
+    role: readStr(o.role ?? o.user_role ?? o.class_role),
   };
 };
 
@@ -281,7 +422,7 @@ export const parseSchoolRow = (row: unknown): UserSchool | null => {
 
   const classes = readNestedClasses(o)
     .map(parseSchoolClassRow)
-    .filter((item): item is Pick<UserClass, 'id' | 'name'> => item !== null);
+    .filter((item): item is SchoolClass => item !== null);
 
   return {
     id: String(id),
@@ -310,7 +451,7 @@ export const flattenSchoolClasses = (schools: UserSchool[]): UserClass[] =>
     school.classes.map((cls) => ({
       id: cls.id,
       name: cls.name,
-      role: '',
+      role: cls.role ?? '',
       schoolId: school.id,
       schoolName: school.name,
       region: school.region,

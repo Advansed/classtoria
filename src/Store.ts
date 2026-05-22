@@ -25,10 +25,11 @@ export type Profile = {
   image:                  string;
 };
 
-/** Класс внутри школы (`Class`: id, name). */
+/** Класс внутри школы (`Class`: id, name, role). */
 export type SchoolClass = {
   id:                     string;
   name:                   string;
+  role:                   string;
 };
 
 /** Школа из `get_classes` (`School` + вложенные классы). */

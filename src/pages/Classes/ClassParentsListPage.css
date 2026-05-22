@@ -80,6 +80,104 @@
   color: #e86a24;
 }
 
+.class-members-list__teacher-card {
+  margin-bottom: 14px;
+}
+
+.class-members-list__teacher-card .class-members-list__h2 {
+  margin-bottom: 10px;
+}
+
+.class-members-list__teacher-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.class-members-list__teacher-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #f0eeea;
+}
+
+.class-members-list__teacher-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.class-members-list__teacher-name {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.class-members-list__teacher-meta {
+  margin: 0;
+  font-size: 13px;
+  color: #6b6560;
+}
+
+.class-members-list__teacher-status {
+  flex-shrink: 0;
+}
+
+.class-members-list__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.class-members-list__tab {
+  flex: 1;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #6b6560;
+  cursor: pointer;
+}
+
+.class-members-list__tab--active {
+  border-color: #e86a24;
+  background: #fce8dc;
+  color: #c55a1a;
+}
+
+.class-members-list__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.class-members-list__action-btn {
+  --background: #e86a24;
+  --background-activated: #d45f1f;
+  --border-radius: 12px;
+  --box-shadow: none;
+  margin: 0;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.class-members-list__action-btn--secondary {
+  --background: #fff;
+  --background-activated: #faf8f5;
+  --border-color: #e86a24;
+  --border-width: 1px;
+  --border-style: solid;
+  --color: #e86a24;
+}
+
 .class-members-list__card {
   background: #fff;
   border-radius: 16px;
@@ -101,6 +199,19 @@
   text-align: center;
   font-size: 14px;
   color: #8a8580;
+}
+
+.class-members-list__empty--compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 8px;
+}
+
+.class-members-list__empty--compact ion-icon {
+  font-size: 20px;
+  color: #c4bfb6;
 }
 
 .class-members-list__table-wrap {

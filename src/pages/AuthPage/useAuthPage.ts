@@ -230,7 +230,6 @@ export const useAuthPage = () => {
     return saved ? formatPhone(saved) : '';
   });
   const [sms, setSms] = useState('');
-  const [showSmsOption, setShowSmsOption] = useState(false);
   const [transport, setTransport] = useState<Transport | ''>('');
   const [smsFlow, setSmsFlow] = useState(false);
   const [phoneError, setPhoneError] = useState('');
@@ -253,19 +252,10 @@ export const useAuthPage = () => {
     setSms(value.replace(/\D/g, '').slice(0, 6));
   };
 
-  const handleTransportSelect = (nextTransport: Transport) => {
-    setTransport(nextTransport);
-    setTransportError('');
-  };
-
-  const revealSmsOption = () => {
-    setShowSmsOption(true);
-  };
-
   const selectSmsFlow = () => {
     setSmsFlow(true);
     setSms('');
-    setTransport('');
+    setTransport('sms');
     setTransportError('');
   };
 
@@ -592,7 +582,7 @@ export const useAuthPage = () => {
   const primaryButtonLabel = smsFlow ? 'Проверить код' : 'Войти';
 
   const smsHintText =
-    'Получите код в выбранном канале. Регистрация и восстановление проходят одинаково.';
+    'Получите код по SMS. Регистрация и восстановление проходят одинаково.';
 
   const pageTitle = smsFlow ? 'Подтверждение номера' : 'Авторизация';
 
@@ -622,7 +612,6 @@ export const useAuthPage = () => {
     sms,
     smsFlow,
     hasStoredPassword,
-    showSmsOption,
     transport,
     phoneError,
     transportError,
@@ -632,8 +621,6 @@ export const useAuthPage = () => {
     pageTitle,
     handlePhoneChange,
     handleSmsChange,
-    handleTransportSelect,
-    revealSmsOption,
     selectSmsFlow,
     selectAuthorizeFlow,
     handleSendCode,

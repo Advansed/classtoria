@@ -9,7 +9,24 @@ import {
 import { homeOutline, peopleOutline, personOutline } from 'ionicons/icons';
 import { Redirect, Route } from 'react-router-dom';
 import ProfileTab from './components/ProfileTab';
-import PersonalClassTab from '../Classes/PersonalClassTab';
+import ClassCabinetPage from '../Classes/components/ClassCabinetPage';
+import ClassWhitelistPage from '../Classes/ClassWhitelistPage';
+import CollectionUploadPage from '../Classes/components/CollectionUploadPage';
+import CreateCollectionPage from '../Classes/components/CreateCollectionPage';
+import CreateEventPage from '../Classes/components/CreateEventPage';
+import EventUploadPage from '../Classes/components/EventUploadPage';
+import EventViewPage from '../Classes/components/EventViewPage';
+import Schools from '../Classes/components/Schools';
+import {
+  CLASSES_BASE,
+  CLASSES_CABINET,
+  CLASSES_COLLECTION_CREATE,
+  CLASSES_COLLECTION_UPLOAD,
+  CLASSES_EVENT_CREATE,
+  CLASSES_EVENT_VIEW,
+  CLASSES_UPLOAD,
+  CLASSES_WHITELIST,
+} from '../Classes/routes';
 import PersonalHomeTab from './PersonalHomeTab';
 import './PersonalPage.css';
 
@@ -22,7 +39,17 @@ const PersonalPage: React.FC = () => {
     <IonTabs>
       <IonRouterOutlet>
         <Route path="/personal/home" exact={true} component={PersonalHomeTab} />
-        <Route path="/personal/class" exact={true} component={PersonalClassTab} />
+        <Route path={CLASSES_CABINET} exact={true} component={ClassCabinetPage} />
+        <Route path={CLASSES_EVENT_VIEW} exact={true} component={EventViewPage} />
+        <Route path={CLASSES_UPLOAD} exact={true} component={EventUploadPage} />
+        <Route path={CLASSES_EVENT_CREATE} exact={true} component={CreateEventPage} />
+        <Route path={CLASSES_COLLECTION_UPLOAD} exact={true} component={CollectionUploadPage} />
+        <Route path={CLASSES_COLLECTION_CREATE} exact={true} component={CreateCollectionPage} />
+        <Route path={CLASSES_WHITELIST} exact={true} component={ClassWhitelistPage} />
+        <Route path={`${CLASSES_BASE}/parents`} exact={true}>
+          <Redirect to={CLASSES_WHITELIST} />
+        </Route>
+        <Route path={CLASSES_BASE} exact={true} component={Schools} />
         <Route path="/personal/profile" exact={true} component={ProfileTab} />
         <Route path="/personal" exact={true}>
           <Redirect to="/personal/home" />

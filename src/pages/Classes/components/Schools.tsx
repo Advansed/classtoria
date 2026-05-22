@@ -15,9 +15,10 @@ import {
 } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useStore, type UserSchool } from '../../Store';
-import { useClassesStore } from './classesStore';
-import './PersonalClassTab.css';
+import { useStore, type UserSchool } from '../../../Store';
+import { useClassesStore } from '../classesStore';
+import { CLASSES_CABINET } from '../routes';
+import './Schools.css';
 
 const classCountLabel = (count: number): string => {
   const n = Math.abs(count) % 100;
@@ -34,7 +35,7 @@ const classCountLabel = (count: number): string => {
   return `${count} классов`;
 };
 
-const PersonalClassTab: React.FC = () => {
+const Schools: React.FC = () => {
   const history = useHistory();
   const token = useStore((s) => s.token);
   const schools = useStore((s) => s.schools);
@@ -86,17 +87,17 @@ const PersonalClassTab: React.FC = () => {
   );
 
   const openClassCabinet = (school: UserSchool, classId: string, className: string) => {
-    const token = useStore.getState().token;
-    if (token?.trim()) {
+    const currentToken = useStore.getState().token;
+    if (currentToken?.trim()) {
       void useClassesStore.getState().loadClass({
         classId,
         schoolId: school.id,
-        token,
+        token: currentToken,
         name: className,
       });
     }
 
-    history.push('/class-cabinet', {
+    history.push(CLASSES_CABINET, {
       schoolId: school.id,
       schoolName: school.name,
       classId,
@@ -106,64 +107,64 @@ const PersonalClassTab: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent fullscreen className="personal-class">
-        <div className="personal-class__scroll">
-          <section className="personal-class__section" aria-labelledby="personal-class-schools-heading">
-            <div className="personal-class__section-head">
-              <span className="personal-class__section-icon" aria-hidden>
+      <IonContent fullscreen className="classes-schools">
+        <div className="classes-schools__scroll">
+          <section className="classes-schools__section" aria-labelledby="classes-schools-heading">
+            <div className="classes-schools__section-head">
+              <span className="classes-schools__section-icon" aria-hidden>
                 <IonIcon icon={schoolOutline} />
               </span>
-              <h2 id="personal-class-schools-heading" className="personal-class__h2">
+              <h2 id="classes-schools-heading" className="classes-schools__h2">
                 Школы
               </h2>
             </div>
 
             {loading && schools.length === 0 ? (
-              <div className="personal-class__loading" role="status">
+              <div className="classes-schools__loading" role="status">
                 <IonSpinner name="crescent" />
                 <p>Загрузка школ…</p>
               </div>
             ) : schools.length === 0 ? (
-              <div className="personal-class__empty">
+              <div className="classes-schools__empty">
                 <IonIcon icon={businessOutline} aria-hidden />
                 <p>Нет доступных школ</p>
               </div>
             ) : (
-              <ul className="personal-class__schools-list">
+              <ul className="classes-schools__schools-list">
                 {schools.map((school) => {
                   const isSelected = school.id === selectedSchoolId;
                   return (
                     <li key={school.id}>
                       <button
                         type="button"
-                        className={`personal-class__school-card${isSelected ? ' personal-class__school-card--selected' : ''}`}
+                        className={`classes-schools__school-card${isSelected ? ' classes-schools__school-card--selected' : ''}`}
                         aria-expanded={isSelected}
                         onClick={() => handleSchoolClick(school.id)}
                       >
-                        <span className="personal-class__school-icon" aria-hidden>
+                        <span className="classes-schools__school-icon" aria-hidden>
                           <IonIcon icon={businessOutline} />
                         </span>
-                        <span className="personal-class__school-body">
-                          <span className="personal-class__school-name">{school.name}</span>
+                        <span className="classes-schools__school-body">
+                          <span className="classes-schools__school-name">{school.name}</span>
                           {school.region.trim() ? (
-                            <span className="personal-class__school-meta">
+                            <span className="classes-schools__school-meta">
                               <IonIcon icon={mapOutline} aria-hidden />
                               {school.region}
                             </span>
                           ) : null}
                           {school.location.trim() ? (
-                            <span className="personal-class__school-meta">
+                            <span className="classes-schools__school-meta">
                               <IonIcon icon={locationOutline} aria-hidden />
                               {school.location}
                             </span>
                           ) : null}
-                          <span className="personal-class__school-count">
+                          <span className="classes-schools__school-count">
                             {classCountLabel(school.classes.length)}
                           </span>
                         </span>
                         <IonIcon
                           icon={chevronForwardOutline}
-                          className="personal-class__school-chevron"
+                          className="classes-schools__school-chevron"
                           aria-hidden
                         />
                       </button>
@@ -175,39 +176,39 @@ const PersonalClassTab: React.FC = () => {
           </section>
 
           {selectedSchool ? (
-            <section className="personal-class__section" aria-labelledby="personal-class-classes-heading">
-              <div className="personal-class__classes-head">
-                <span className="personal-class__section-icon personal-class__section-icon--classes" aria-hidden>
+            <section className="classes-schools__section" aria-labelledby="classes-classes-heading">
+              <div className="classes-schools__classes-head">
+                <span className="classes-schools__section-icon classes-schools__section-icon--classes" aria-hidden>
                   <IonIcon icon={peopleOutline} />
                 </span>
                 <div>
-                  <h2 id="personal-class-classes-heading" className="personal-class__h2">
+                  <h2 id="classes-classes-heading" className="classes-schools__h2">
                     Классы
                   </h2>
-                  <p className="personal-class__classes-subtitle">{selectedSchool.name}</p>
+                  <p className="classes-schools__classes-subtitle">{selectedSchool.name}</p>
                 </div>
               </div>
 
               {selectedSchool.classes.length === 0 ? (
-                <div className="personal-class__empty personal-class__empty--compact">
+                <div className="classes-schools__empty classes-schools__empty--compact">
                   <p>В этой школе пока нет классов</p>
                 </div>
               ) : (
-                <div className="personal-class__classes-grid">
+                <div className="classes-schools__classes-grid">
                   {selectedSchool.classes.map((cls) => (
-                    <article key={cls.id} className="personal-class__class-card">
-                      <div className="personal-class__class-top">
-                        <span className="personal-class__class-badge" aria-hidden>
+                    <article key={cls.id} className="classes-schools__class-card">
+                      <div className="classes-schools__class-top">
+                        <span className="classes-schools__class-badge" aria-hidden>
                           <IonIcon icon={peopleOutline} />
                         </span>
-                        <div className="personal-class__class-info">
-                          <p className="personal-class__class-name">{cls.name}</p>
-                          <p className="personal-class__class-meta">{selectedSchool.name}</p>
+                        <div className="classes-schools__class-info">
+                          <p className="classes-schools__class-name">{cls.name}</p>
+                          <p className="classes-schools__class-meta">{selectedSchool.name}</p>
                         </div>
                       </div>
                       <IonButton
                         expand="block"
-                        className="personal-class__class-btn"
+                        className="classes-schools__class-btn"
                         onClick={() => openClassCabinet(selectedSchool, cls.id, cls.name)}
                       >
                         Открыть ЛК класса
@@ -220,11 +221,11 @@ const PersonalClassTab: React.FC = () => {
             </section>
           ) : null}
 
-          <div className="personal-class__bottom-spacer" aria-hidden />
+          <div className="classes-schools__bottom-spacer" aria-hidden />
         </div>
       </IonContent>
     </IonPage>
   );
 };
 
-export default PersonalClassTab;
+export default Schools;

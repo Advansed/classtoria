@@ -20,23 +20,23 @@ import {
   peopleOutline,
   trophyOutline,
 } from 'ionicons/icons';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { useStore } from '../../Store';
-import type { ClassRouteState } from './types';
-import { useClassesStore } from './classesStore';
+import { useStore } from '../../../Store';
+import type { ClassRouteState } from '../types';
+import { useClassesStore } from '../classesStore';
+import { CLASSES_BASE, CLASSES_EVENT_VIEW, CLASSES_UPLOAD, CLASSES_WHITELIST } from '../routes';
+import { filterTeachers, formatPhoneDisplay, resolveWhitelistTeacher } from '../utils';
 import './ClassCabinetPage.css';
 
 const EVENT_IMG = '/images/start-gallery.png';
 const FALLBACK_TEACHER_IMG = '/images/start-gallery.png';
 
-const MOCK_STATS = [
-  { label: 'События', value: 12 },
-  { label: 'Фото', value: 486 },
-  { label: 'Видео', value: 18 },
-  { label: 'Сохранено фото', value: 164 },
-  { label: 'Сохранено видео', value: 9 },
-  { label: 'Комментарии', value: 47 },
+const CLASS_STAT_ITEMS = [
+  { key: 'events', label: 'События' },
+  { key: 'collections', label: 'Коллекции' },
+  { key: 'photos', label: 'Фото' },
+  { key: 'comments', label: 'Комментарии' },
 ] as const;
 
 const eventPreview = (preview: string | undefined): string => {
@@ -50,7 +50,8 @@ const ClassCabinetPage: React.FC = () => {
   const state = location.state ?? {};
   const token = useStore((s) => s.token);
 
-  const classId = state.classId?.trim() ?? '';
+  const activeClassId = useClassesStore((s) => s.activeClassId);
+  const classId = state.classId?.trim() || activeClassId?.trim() || '';
   const schoolId = state.schoolId?.trim();
   const schoolName = state.schoolName?.trim() || 'СОШ №17';
   const classNameFromRoute = state.className?.trim() || '';
@@ -79,12 +80,48 @@ const ClassCabinetPage: React.FC = () => {
   }, [classId, schoolId, token, classNameFromRoute, loadClass]);
 
   const displayClassName = classDetail?.name || classNameFromRoute || '—';
-  const teacher = classDetail?.teacher;
-  const teacherName = teacher?.name?.trim() || '—';
-  const teacherImage = teacher?.image?.trim() || FALLBACK_TEACHER_IMG;
-  const teacherAchievements = teacher?.achievements ?? 0;
-  const teacherGratitudes = teacher?.gratitudes ?? 0;
+  const members = classDetail?.members;
+  const teacherMembers = useMemo(() => filterTeachers(members ?? []), [members]);
+  const teacherCard = useMemo(
+    () => resolveWhitelistTeacher(classDetail?.teacher, teacherMembers, members),
+    [classDetail?.teacher, teacherMembers, members],
+  );
+  const teacherName = teacherCard.name || '—';
+  const teacherPhone = formatPhoneDisplay(teacherCard.phone);
+  const teacherImage = teacherCard.image?.trim() || FALLBACK_TEACHER_IMG;
+  const teacherAchievements = classDetail?.teacher?.achievements ?? 0;
+  const teacherGratitudes = classDetail?.teacher?.gratitudes ?? 0;
   const events = classDetail?.events ?? [];
+  const stats = classDetail?.stats;
+
+  const openWhitelist = () => {
+    history.push(CLASSES_WHITELIST, {
+      schoolId,
+      schoolName,
+      classId,
+      className: displayClassName,
+    });
+  };
+
+  const openUpload = () => {
+    history.push(CLASSES_UPLOAD, {
+      schoolId,
+      schoolName,
+      classId,
+      className: displayClassName,
+    });
+  };
+
+  const openEvent = (ev: (typeof events)[number], index: number) => {
+    history.push(CLASSES_EVENT_VIEW, {
+      schoolId,
+      schoolName,
+      classId,
+      className: displayClassName,
+      eventId: ev.id,
+      eventIndex: index,
+    });
+  };
 
   return (
     <IonPage>
@@ -92,7 +129,7 @@ const ClassCabinetPage: React.FC = () => {
         <IonToolbar>
           <IonButtons slot="start">
             <IonBackButton
-              defaultHref="/personal/class"
+              defaultHref={CLASSES_BASE}
               text="Назад"
               className="class-cabinet__back"
             />
@@ -145,6 +182,9 @@ const ClassCabinetPage: React.FC = () => {
                 <div className="class-cabinet__teacher-info">
                   <p className="class-cabinet__teacher-label">Классный руководитель</p>
                   <p className="class-cabinet__teacher-name">{teacherName}</p>
+                  <p className="class-cabinet__teacher-phone">
+                    {teacherPhone || 'Телефон не указан'}
+                  </p>
                   {teacherAchievements > 0 ? (
                     <p className="class-cabinet__teacher-stat">
                       <IonIcon icon={trophyOutline} aria-hidden />
@@ -161,7 +201,7 @@ const ClassCabinetPage: React.FC = () => {
               </div>
 
               <div className="class-cabinet__composition">
-                <button type="button" className="class-cabinet__composition-card">
+                <button type="button" className="class-cabinet__composition-card" onClick={openWhitelist}>
                   <span className="class-cabinet__composition-icon" aria-hidden>
                     <IonIcon icon={peopleOutline} />
                   </span>
@@ -174,14 +214,7 @@ const ClassCabinetPage: React.FC = () => {
                 <button
                   type="button"
                   className="class-cabinet__composition-card"
-                  onClick={() =>
-                    history.push('/class-cabinet/parents', {
-                      schoolId,
-                      schoolName,
-                      classId,
-                      className: displayClassName,
-                    })
-                  }
+                  onClick={openWhitelist}
                 >
                   <span className="class-cabinet__composition-icon" aria-hidden>
                     <IonIcon icon={peopleOutline} />
@@ -198,11 +231,9 @@ const ClassCabinetPage: React.FC = () => {
 
           <section className="class-cabinet__card class-cabinet__stats" aria-label="Статистика класса">
             <ul className="class-cabinet__stats-grid">
-              {MOCK_STATS.map((item) => (
-                <li key={item.label} className="class-cabinet__stat">
-                  <span className="class-cabinet__stat-value">
-                    {item.label === 'События' && events.length > 0 ? events.length : item.value}
-                  </span>
+              {CLASS_STAT_ITEMS.map((item) => (
+                <li key={item.key} className="class-cabinet__stat">
+                  <span className="class-cabinet__stat-value">{stats?.[item.key] ?? 0}</span>
                   <span className="class-cabinet__stat-label">{item.label}</span>
                 </li>
               ))}
@@ -236,7 +267,12 @@ const ClassCabinetPage: React.FC = () => {
                   );
 
                   return (
-                    <article key={`${ev.title}-${ev.date}-${index}`} className="class-cabinet__event-card">
+                    <button
+                      type="button"
+                      key={`${ev.id ?? ev.title}-${ev.date}-${index}`}
+                      className="class-cabinet__event-card"
+                      onClick={() => openEvent(ev, index)}
+                    >
                       <div className="class-cabinet__event-img-wrap">
                         <img
                           src={eventPreview(preview)}
@@ -255,14 +291,14 @@ const ClassCabinetPage: React.FC = () => {
                         </div>
                         <p className="class-cabinet__event-meta">{ev.date}</p>
                       </div>
-                    </article>
+                    </button>
                   );
                 })}
               </div>
             )}
           </section>
 
-          <button type="button" className="class-cabinet__upload-btn">
+          <button type="button" className="class-cabinet__upload-btn" onClick={openUpload}>
             <IonIcon icon={cloudUploadOutline} className="class-cabinet__upload-icon" aria-hidden />
             <span>Загрузить событие / материалы</span>
             <IonIcon icon={chevronForwardOutline} className="class-cabinet__upload-chevron" aria-hidden />

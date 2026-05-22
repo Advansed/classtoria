@@ -1,19 +1,19 @@
-.personal-class {
+.classes-schools {
   --background: #f2f2f2;
 }
 
-.personal-class__scroll {
+.classes-schools__scroll {
   padding: 16px 16px 8px;
   box-sizing: border-box;
   max-width: 100%;
 }
 
-.personal-class__section {
+.classes-schools__section {
   margin-bottom: 24px;
 }
 
-.personal-class__section-head,
-.personal-class__classes-head {
+.classes-schools__section-head,
+.classes-schools__classes-head {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -21,13 +21,13 @@
   margin-bottom: 12px;
 }
 
-.personal-class__classes-head {
+.classes-schools__classes-head {
   flex-direction: row;
   align-items: center;
   gap: 12px;
 }
 
-.personal-class__section-icon {
+.classes-schools__section-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -40,31 +40,30 @@
   flex-shrink: 0;
 }
 
-.personal-class__section-icon ion-icon {
+.classes-schools__section-icon ion-icon {
   font-size: 20px;
 }
 
-.personal-class__section-icon--classes {
+.classes-schools__section-icon--classes {
   background: rgba(232, 106, 36, 0.15);
   color: #e86a24;
 }
 
-.personal-class__h2 {
+.classes-schools__h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
   color: #1a1a1a;
 }
 
-.personal-class__classes-subtitle {
+.classes-schools__classes-subtitle {
   margin: 4px 0 0;
   font-size: 13px;
   color: #8a8580;
   line-height: 1.35;
 }
 
-/* —— Schools list —— */
-.personal-class__schools-list {
+.classes-schools__schools-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -73,7 +72,7 @@
   gap: 10px;
 }
 
-.personal-class__school-card {
+.classes-schools__school-card {
   width: 100%;
   display: flex;
   align-items: center;
@@ -91,12 +90,12 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.personal-class__school-card--selected {
+.classes-schools__school-card--selected {
   border-color: rgba(232, 106, 36, 0.45);
   box-shadow: 0 2px 10px rgba(232, 106, 36, 0.12);
 }
 
-.personal-class__school-icon {
+.classes-schools__school-icon {
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -109,11 +108,11 @@
   line-height: 0;
 }
 
-.personal-class__school-icon ion-icon {
+.classes-schools__school-icon ion-icon {
   font-size: 24px;
 }
 
-.personal-class__school-body {
+.classes-schools__school-body {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -121,14 +120,14 @@
   gap: 3px;
 }
 
-.personal-class__school-name {
+.classes-schools__school-name {
   font-size: 15px;
   font-weight: 700;
   color: #1a1a1a;
   line-height: 1.25;
 }
 
-.personal-class__school-meta {
+.classes-schools__school-meta {
   display: flex;
   align-items: flex-start;
   gap: 4px;
@@ -137,40 +136,39 @@
   line-height: 1.35;
 }
 
-.personal-class__school-meta ion-icon {
+.classes-schools__school-meta ion-icon {
   flex-shrink: 0;
   font-size: 14px;
   margin-top: 1px;
   color: #c4bfb6;
 }
 
-.personal-class__school-count {
+.classes-schools__school-count {
   margin-top: 2px;
   font-size: 11px;
   font-weight: 600;
   color: #e86a24;
 }
 
-.personal-class__school-chevron {
+.classes-schools__school-chevron {
   flex-shrink: 0;
   font-size: 18px;
   color: #c4bfb6;
   transition: transform 0.15s ease, color 0.15s ease;
 }
 
-.personal-class__school-card--selected .personal-class__school-chevron {
+.classes-schools__school-card--selected .classes-schools__school-chevron {
   color: #e86a24;
   transform: rotate(90deg);
 }
 
-/* —— Classes grid —— */
-.personal-class__classes-grid {
+.classes-schools__classes-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
-.personal-class__class-card {
+.classes-schools__class-card {
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -181,7 +179,7 @@
   box-sizing: border-box;
 }
 
-.personal-class__class-top {
+.classes-schools__class-top {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -189,7 +187,7 @@
   min-width: 0;
 }
 
-.personal-class__class-badge {
+.classes-schools__class-badge {
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -202,15 +200,15 @@
   line-height: 0;
 }
 
-.personal-class__class-badge ion-icon {
+.classes-schools__class-badge ion-icon {
   font-size: 20px;
 }
 
-.personal-class__class-info {
+.classes-schools__class-info {
   min-width: 0;
 }
 
-.personal-class__class-name {
+.classes-schools__class-name {
   margin: 0 0 2px;
   font-size: 13px;
   font-weight: 700;
@@ -218,7 +216,7 @@
   line-height: 1.25;
 }
 
-.personal-class__class-meta {
+.classes-schools__class-meta {
   margin: 0;
   font-size: 11px;
   color: #8a8580;
@@ -228,7 +226,7 @@
   white-space: nowrap;
 }
 
-.personal-class__class-btn {
+.classes-schools__class-btn {
   --background: #fce8dc;
   --background-activated: #f5d9c8;
   --background-hover: #f9e0d2;
@@ -244,18 +242,17 @@
   min-height: 36px;
 }
 
-.personal-class__class-btn::part(native) {
+.classes-schools__class-btn::part(native) {
   padding-inline: 8px;
 }
 
-.personal-class__class-btn ion-icon {
+.classes-schools__class-btn ion-icon {
   font-size: 14px;
   margin-inline-start: 4px;
 }
 
-/* —— States —— */
-.personal-class__loading,
-.personal-class__empty {
+.classes-schools__loading,
+.classes-schools__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -268,23 +265,23 @@
   text-align: center;
 }
 
-.personal-class__empty--compact {
+.classes-schools__empty--compact {
   padding: 24px 16px;
 }
 
-.personal-class__loading p,
-.personal-class__empty p {
+.classes-schools__loading p,
+.classes-schools__empty p {
   margin: 0;
   font-size: 14px;
   color: #8a8580;
   line-height: 1.45;
 }
 
-.personal-class__empty ion-icon {
+.classes-schools__empty ion-icon {
   font-size: 40px;
   color: #d8d4ce;
 }
 
-.personal-class__bottom-spacer {
+.classes-schools__bottom-spacer {
   height: 16px;
 }

@@ -1,10 +1,9 @@
 import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { Route } from 'react-router-dom';
+import { Redirect, Route } from 'react-router-dom';
 import { PrivateRoute, RootRedirect } from './authRouteGates';
 import Page from './pages/Page';
-import ClassCabinetPage from './pages/Classes/ClassCabinetPage';
-import ClassParentsListPage from './pages/Classes/ClassParentsListPage';
+import { CLASSES_CABINET, CLASSES_WHITELIST } from './pages/Classes/routes';
 import AuthPage from './pages/AuthPage/AuthPage';
 import PersonalPage from './pages/PersonalPage/PersonalPage';
 import StartPage from './pages/StartPage/StartPage';
@@ -32,15 +31,14 @@ const App: React.FC = () => {
                   <PersonalPage />
                 </PrivateRoute>
               </Route>
+              <Route path="/class-cabinet/whitelist" exact={true}>
+                <Redirect to={CLASSES_WHITELIST} />
+              </Route>
               <Route path="/class-cabinet/parents" exact={true}>
-                <PrivateRoute>
-                  <ClassParentsListPage />
-                </PrivateRoute>
+                <Redirect to={CLASSES_WHITELIST} />
               </Route>
               <Route path="/class-cabinet" exact={true}>
-                <PrivateRoute>
-                  <ClassCabinetPage />
-                </PrivateRoute>
+                <Redirect to={CLASSES_CABINET} />
               </Route>
               <Route path="/auth" exact={true}>
                 <AuthPage />
