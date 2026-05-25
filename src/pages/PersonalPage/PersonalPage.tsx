@@ -15,7 +15,9 @@ import CollectionUploadPage from '../Classes/components/CollectionUploadPage';
 import CreateCollectionPage from '../Classes/components/CreateCollectionPage';
 import CreateEventPage from '../Classes/components/CreateEventPage';
 import EventUploadPage from '../Classes/components/EventUploadPage';
+import CollectionViewPage from '../Classes/components/CollectionViewPage';
 import EventViewPage from '../Classes/components/EventViewPage';
+import ImageViewPage from '../Classes/components/ImageViewPage';
 import Schools from '../Classes/components/Schools';
 import {
   CLASSES_BASE,
@@ -23,7 +25,9 @@ import {
   CLASSES_COLLECTION_CREATE,
   CLASSES_COLLECTION_UPLOAD,
   CLASSES_EVENT_CREATE,
+  CLASSES_COLLECTION_VIEW,
   CLASSES_EVENT_VIEW,
+  CLASSES_IMAGE_VIEW,
   CLASSES_UPLOAD,
   CLASSES_WHITELIST,
 } from '../Classes/routes';
@@ -41,6 +45,8 @@ const PersonalPage: React.FC = () => {
         <Route path="/personal/home" exact={true} component={PersonalHomeTab} />
         <Route path={CLASSES_CABINET} exact={true} component={ClassCabinetPage} />
         <Route path={CLASSES_EVENT_VIEW} exact={true} component={EventViewPage} />
+        <Route path={CLASSES_COLLECTION_VIEW} exact={true} component={CollectionViewPage} />
+        <Route path={CLASSES_IMAGE_VIEW} exact={true} component={ImageViewPage} />
         <Route path={CLASSES_UPLOAD} exact={true} component={EventUploadPage} />
         <Route path={CLASSES_EVENT_CREATE} exact={true} component={CreateEventPage} />
         <Route path={CLASSES_COLLECTION_UPLOAD} exact={true} component={CollectionUploadPage} />

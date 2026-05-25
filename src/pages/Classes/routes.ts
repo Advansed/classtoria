@@ -14,3 +14,7 @@ export const CLASSES_COLLECTION_UPLOAD = `${CLASSES_BASE}/collection-upload`;
 export const CLASSES_COLLECTION_CREATE = `${CLASSES_BASE}/collection-create`;
 
 export const CLASSES_EVENT_VIEW = `${CLASSES_BASE}/event`;
+
+export const CLASSES_COLLECTION_VIEW = `${CLASSES_BASE}/collection`;
+
+export const CLASSES_IMAGE_VIEW = `${CLASSES_BASE}/image`;

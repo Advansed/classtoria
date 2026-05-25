@@ -4,6 +4,12 @@ export type ClassImage = {
   preview:                string;
   file:                   string;
   imageId?:               string;
+  /** Избранное / «корона» в сетке фотосессии. */
+  featured?:              boolean;
+  /** Комментарии (числитель в «12/7»). */
+  commentsCount?:         number;
+  /** Отмеченные дети (знаменатель в «12/7»). */
+  taggedCount?:           number;
 };
 
 /** Комментарий к событию (если приходит в `get_class`). */
@@ -24,6 +30,10 @@ export type ClassCollection = {
   /** Имя автора коллекции для списка на экране события. */
   creatorName?:           string;
   images:                 ClassImage[];
+  /** Видеоролик фотосессии, если есть. */
+  videoUrl?:              string;
+  videoPreview?:          string;
+  videoDuration?:         string;
 };
 
 /** Событие класса. */
@@ -72,6 +82,22 @@ export type CollectionUploadRouteState = ClassRouteState & {
 export type EventViewRouteState = ClassRouteState & {
   eventId?:               string;
   eventIndex?:            number;
+};
+
+/** Просмотр фотосессии (коллекции). */
+export type CollectionViewRouteState = ClassRouteState & {
+  eventId?:               string;
+  eventIndex?:            number;
+  eventTitle:             string;
+  eventDate:              string;
+  collectionId?:          string;
+  collectionIndex?:       number;
+};
+
+/** Просмотр одного фото. */
+export type ImageViewRouteState = CollectionViewRouteState & {
+  imageId?:               string;
+  imageIndex?:            number;
 };
 
 /** Классный руководитель. */

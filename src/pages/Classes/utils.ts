@@ -56,6 +56,20 @@ export const parseClassImage = (row: unknown): ClassImage | null => {
   const idRaw = o.image_id ?? o.imageId ?? o.id;
   const imageId = idRaw != null ? String(idRaw).trim() : '';
 
+  const featuredRaw = o.featured ?? o.is_featured ?? o.isFeatured ?? o.crown;
+  const featured =
+    featuredRaw === true ||
+    featuredRaw === 1 ||
+    featuredRaw === '1' ||
+    featuredRaw === 'true';
+
+  const commentsCount = readNum(
+    o.comments ?? o.comments_count ?? o.comment_count ?? o.commentsCount,
+  );
+  const taggedCount = readNum(
+    o.tagged ?? o.tagged_count ?? o.tags_count ?? o.taggedCount ?? o.tags,
+  );
+
   return {
     date: readStr(o.date),
     preview: readStr(
@@ -63,6 +77,9 @@ export const parseClassImage = (row: unknown): ClassImage | null => {
     ),
     file: readStr(o.fileurl ?? o.file_url ?? o.file ?? o.url ?? o.src),
     ...(imageId ? { imageId } : {}),
+    ...(featured ? { featured: true } : {}),
+    ...(commentsCount > 0 ? { commentsCount } : {}),
+    ...(taggedCount > 0 ? { taggedCount } : {}),
   };
 };
 
@@ -80,6 +97,12 @@ export const parseClassCollection = (row: unknown): ClassCollection | null => {
   const creatorName =
     readStr(o.creator_name ?? o.creatorName ?? o.author ?? o.author_name ?? o.authorName);
 
+  const videoUrl = readStr(o.video_url ?? o.videoUrl ?? o.video);
+  const videoPreview = readStr(
+    o.video_preview ?? o.videoPreview ?? o.video_thumb ?? o.videoThumb,
+  );
+  const videoDuration = readStr(o.video_duration ?? o.videoDuration ?? o.duration);
+
   return {
     ...(id ? { id } : {}),
     date: readStr(o.date),
@@ -87,6 +110,9 @@ export const parseClassCollection = (row: unknown): ClassCollection | null => {
     title: readStr(o.title),
     ...(creatorName ? { creatorName } : {}),
     images,
+    ...(videoUrl ? { videoUrl } : {}),
+    ...(videoPreview ? { videoPreview } : {}),
+    ...(videoDuration ? { videoDuration } : {}),
   };
 };
 

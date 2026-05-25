@@ -21,8 +21,14 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { useToast } from '../../../hooks/useToast';
 import { useStore } from '../../../Store';
 import { useClassesStore } from '../classesStore';
-import { CLASSES_CABINET, CLASSES_COLLECTION_UPLOAD } from '../routes';
-import type { ClassCollection, ClassEvent, CollectionUploadRouteState, EventViewRouteState } from '../types';
+import { CLASSES_CABINET, CLASSES_COLLECTION_UPLOAD, CLASSES_COLLECTION_VIEW } from '../routes';
+import type {
+  ClassCollection,
+  ClassEvent,
+  CollectionUploadRouteState,
+  CollectionViewRouteState,
+  EventViewRouteState,
+} from '../types';
 import { resolveWhitelistTeacher, filterTeachers } from '../utils';
 import { useClassImageSrc } from './useClassImageSrc';
 import './EventViewPage.css';
@@ -192,8 +198,23 @@ const EventViewPage: React.FC = () => {
     setCommentDraft('');
   };
 
-  const onCollectionPress = () => {
-    toast.show('Просмотр коллекции скоро будет доступен');
+  const openCollection = (col: ClassCollection, index: number) => {
+    if (!event) {
+      return;
+    }
+    const nextState: CollectionViewRouteState = {
+      schoolId,
+      schoolName,
+      classId,
+      className: displayClassName,
+      eventId: event.id,
+      eventIndex,
+      eventTitle: event.title,
+      eventDate: event.date,
+      ...(col.id ? { collectionId: col.id } : {}),
+      collectionIndex: index,
+    };
+    history.push(CLASSES_COLLECTION_VIEW, nextState);
   };
 
   return (
@@ -291,7 +312,7 @@ const EventViewPage: React.FC = () => {
                         collection={col}
                         authorFallback={authorFallback}
                         token={token}
-                        onPress={onCollectionPress}
+                        onPress={() => openCollection(col, index)}
                       />
                     ))
                   )}
