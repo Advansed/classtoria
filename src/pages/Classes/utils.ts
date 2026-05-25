@@ -176,18 +176,34 @@ export const parseClassEvent = (row: unknown): ClassEvent | null => {
   };
 };
 
+const looksLikePhone = (value: string): boolean => {
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 10;
+};
+
+/** Участник белого списка: есть id, роль и номер телефона (имя может быть пустым). */
+export const isWhitelistMember = (role: string, phone: string): boolean =>
+  Boolean(role.trim()) && looksLikePhone(phone);
+
 export const parseClassMember = (row: unknown): ClassMember | null => {
   if (!row || typeof row !== 'object') {
     return null;
   }
   const o = row as Record<string, unknown>;
   const id = o.id ?? o.user_id ?? o.userId;
-  const name = o.name;
   if (id == null || id === '') {
     return null;
   }
-  if (typeof name !== 'string' || !name.trim()) {
-    return null;
+
+  const role = readStr(o.role);
+  let phone = readStr(o.phone ?? o.phone_number ?? o.phoneNumber);
+  let name = readStr(o.name);
+  if (!phone && looksLikePhone(name)) {
+    phone = name;
+    name = '';
+  }
+  if (looksLikePhone(name)) {
+    name = '';
   }
 
   const authorizedRaw = o.authorized ?? o.is_authorized ?? o.isAuthorized ?? o.logged_in;
@@ -199,12 +215,25 @@ export const parseClassMember = (row: unknown): ClassMember | null => {
 
   return {
     id: String(id),
-    name: name.trim(),
-    role: readStr(o.role),
-    phone: readStr(o.phone ?? o.phone_number ?? o.phoneNumber),
+    name,
+    role,
+    phone,
     authorized,
   };
 };
+
+/** ФИО в таблице белого списка: без телефона, пустое — пробел. */
+export const displayMemberName = (name: string): string => {
+  const trimmed = name.trim();
+  if (!trimmed || looksLikePhone(trimmed)) {
+    return ' ';
+  }
+  return trimmed;
+};
+
+/** Участники белого списка: заполнены роль и номер телефона. */
+export const filterWhitelistMembers = (members: ClassMember[]): ClassMember[] =>
+  members.filter((m) => isWhitelistMember(m.role, m.phone));
 
 /** Формат телефона для отображения: +7 (914) 270-11-25 */
 export const formatPhoneDisplay = (value: string): string => {
@@ -243,10 +272,10 @@ export const formatPhoneDisplay = (value: string): string => {
 };
 
 export const filterParents = (members: ClassMember[]): ClassMember[] =>
-  members.filter((m) => isParentRole(m.role));
+  filterWhitelistMembers(members).filter((m) => isParentRole(m.role));
 
 export const filterStudents = (members: ClassMember[]): ClassMember[] =>
-  members.filter((m) => isStudentRole(m.role));
+  filterWhitelistMembers(members).filter((m) => isStudentRole(m.role));
 
 const readNum = (value: unknown): number => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -277,11 +306,6 @@ export const parseClassStats = (raw: unknown): ClassStats => {
     photos: readNum(o.photos ?? o.photo_count ?? o.photos_count ?? o.images),
     comments: readNum(o.comments ?? o.comment_count ?? o.comments_count),
   };
-};
-
-const looksLikePhone = (value: string): boolean => {
-  const digits = value.replace(/\D/g, '');
-  return digits.length >= 10;
 };
 
 export const parseClassTeacher = (raw: unknown): ClassTeacher => {
@@ -330,16 +354,15 @@ export const resolveWhitelistTeacher = (
   let name = member?.name?.trim() || classTeacher?.name?.trim() || '';
   let phone = member?.phone?.trim() || classTeacher?.phone?.trim() || '';
 
-  /* Не показывать номер как ФИО: если в name только телефон — оставить одну строку с номером. */
   if (looksLikePhone(name)) {
     if (!phone) {
       phone = name;
     }
     name = '';
   }
-
   const inWhitelist = Boolean(
     member &&
+      isWhitelistMember(member.role, member.phone) &&
       (teacherMembers.some((m) => m.id === member!.id) || isTeacherRole(member.role)),
   );
 
@@ -371,10 +394,13 @@ export const isClassAdminRole = (role: string): boolean =>
 export const countMembersByRole = (members: ClassMember[]): {
   studentCount: number;
   parentCount: number;
-} => ({
-  studentCount: members.filter((m) => isStudentRole(m.role)).length,
-  parentCount: members.filter((m) => isParentRole(m.role)).length,
-});
+} => {
+  const whitelist = filterWhitelistMembers(members);
+  return {
+    studentCount: whitelist.filter((m) => isStudentRole(m.role)).length,
+    parentCount: whitelist.filter((m) => !isStudentRole(m.role) && !isTeacherRole(m.role)).length,
+  };
+};
 
 export const parseClassDetail = (
   payload: unknown,
