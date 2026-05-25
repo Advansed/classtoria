@@ -35,7 +35,9 @@ import {
 } from './collectionUploadLog';
 import {
   buildCollectionImageBasePath,
+  deleteCollectionImage,
   resolveImagePublicUrl,
+  resolveCollectionImageId,
   uploadJpegToStorage,
 } from './collectionUploadStorage';
 import { useClassImageSrc } from './useClassImageSrc';
@@ -83,23 +85,36 @@ const findEvent = (
 };
 
 type ExistingPreviewTileProps = {
-  imageKey: string;
   previewRaw: string;
   token: string | null;
+  deleting: boolean;
+  disabled: boolean;
+  onDelete: () => void;
 };
 
 const ExistingPreviewTile: React.FC<ExistingPreviewTileProps> = ({
-  imageKey,
   previewRaw,
   token,
+  deleting,
+  disabled,
+  onDelete,
 }) => {
   const src = useClassImageSrc(token, previewRaw);
 
   return (
     <div className="collection-upload__preview-item collection-upload__preview-item--existing">
       <img src={src} alt="" loading="lazy" />
+      <button
+        type="button"
+        className="collection-upload__preview-remove"
+        aria-label="Удалить фото"
+        disabled={disabled || deleting}
+        onClick={() => void onDelete()}
+      >
+        {deleting ? <IonSpinner name="crescent" /> : <X size={14} aria-hidden />}
+      </button>
       <span className="collection-upload__preview-status collection-upload__preview-status--saved">
-        В коллекции
+        {deleting ? 'Удаление…' : 'В коллекции'}
       </span>
     </div>
   );
@@ -136,6 +151,8 @@ const CollectionUploadPage: React.FC = () => {
     {},
   );
   const [processing, setProcessing] = useState(false);
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
+  const [removedImageIds, setRemovedImageIds] = useState<Set<string>>(() => new Set());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const collectionPickerRef = useRef<HTMLDivElement>(null);
@@ -214,10 +231,17 @@ const CollectionUploadPage: React.FC = () => {
     [pendingByCollection, selectedCollectionId],
   );
 
-  const existingImages = useMemo(
-    () => selectedCollection?.images.filter((img) => existingPreviewRaw(img)) ?? [],
-    [selectedCollection?.images],
-  );
+  useEffect(() => {
+    setRemovedImageIds(new Set());
+  }, [selectedCollectionId]);
+
+  const existingImages = useMemo(() => {
+    const list = selectedCollection?.images.filter((img) => existingPreviewRaw(img)) ?? [];
+    return list.filter((img) => {
+      const id = resolveCollectionImageId(img);
+      return !id || !removedImageIds.has(id);
+    });
+  }, [selectedCollection?.images, removedImageIds]);
 
   const hasPreviewContent = existingImages.length > 0 || pendingItems.length > 0;
 
@@ -418,22 +442,102 @@ const CollectionUploadPage: React.FC = () => {
     }
   };
 
-  const removePendingItem = (localId: string) => {
+  const deleteCtx = useMemo(
+    () =>
+      classId && eventId && selectedCollectionId
+        ? { classId, eventId, collectionId: selectedCollectionId }
+        : null,
+    [classId, eventId, selectedCollectionId],
+  );
+
+  const hideImageFromPreview = (imageId: string) => {
+    setRemovedImageIds((prev) => new Set(prev).add(imageId));
+  };
+
+  const deleteExistingImage = async (img: ClassImage, index: number) => {
+    const deleteKey = `${selectedCollectionId}-existing-${index}`;
+    if (!token?.trim() || processing || deletingKey || !deleteCtx) {
+      return;
+    }
+
+    const imageId = resolveCollectionImageId(img);
+    if (!imageId) {
+      toast.error('Нет image_id — нельзя удалить это фото');
+      return;
+    }
+
+    setDeletingKey(deleteKey);
+    hideImageFromPreview(imageId);
+
+    try {
+      logUploadAction('удаление фото из коллекции', {
+        collectionId: selectedCollectionId,
+        imageId,
+      });
+      await deleteCollectionImage(token, img, deleteCtx, imageId);
+      await reloadClass();
+      toast.success('Фото удалено');
+    } catch (err) {
+      setRemovedImageIds((prev) => {
+        const next = new Set(prev);
+        next.delete(imageId);
+        return next;
+      });
+      const message = err instanceof Error ? err.message : 'Не удалось удалить фото';
+      logUploadError('удаление фото', message);
+      toast.error(message);
+    } finally {
+      setDeletingKey(null);
+    }
+  };
+
+  const removePendingItem = async (localId: string) => {
     if (!selectedCollectionId) {
       return;
     }
+
+    const target = pendingItems.find((i) => i.localId === localId);
+    if (!target) {
+      return;
+    }
+
+    if (target.status === 'error' && token?.trim() && deleteCtx) {
+      setDeletingKey(localId);
+      try {
+        await deleteCollectionImage(
+          token,
+          { file: '', preview: '', date: '', imageId: target.imageId },
+          deleteCtx,
+          target.imageId,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Не удалось удалить фото';
+        logUploadError('удаление черновика', message);
+        toast.warning(message);
+      } finally {
+        setDeletingKey(null);
+      }
+    }
+
     patchPending(selectedCollectionId, (list) => {
-      const target = list.find((i) => i.localId === localId);
-      if (target) {
-        revokeLocalPreview(target.localPreviewUrl);
+      const row = list.find((i) => i.localId === localId);
+      if (row) {
+        revokeLocalPreview(row.localPreviewUrl);
       }
       return list.filter((i) => i.localId !== localId);
     });
   };
 
   const canAddFiles = Boolean(
-    classId && eventId && selectedCollection && selectedCollectionId && !processing,
+    classId &&
+      eventId &&
+      selectedCollection &&
+      selectedCollectionId &&
+      !processing &&
+      !deletingKey,
   );
+
+  const previewBusy = processing || Boolean(deletingKey);
 
   return (
     <IonPage>
@@ -601,12 +705,15 @@ const CollectionUploadPage: React.FC = () => {
                     {existingImages.map((img, index) => {
                       const raw = existingPreviewRaw(img);
                       const imageKey = `${selectedCollectionId}-${raw}-${index}`;
+                      const isDeleting = deletingKey === `${selectedCollectionId}-existing-${index}`;
                       return (
                         <ExistingPreviewTile
                           key={imageKey}
-                          imageKey={imageKey}
                           previewRaw={raw}
                           token={token}
+                          deleting={isDeleting}
+                          disabled={previewBusy && !isDeleting}
+                          onDelete={() => void deleteExistingImage(img, index)}
                         />
                       );
                     })}
@@ -631,10 +738,14 @@ const CollectionUploadPage: React.FC = () => {
                             type="button"
                             className="collection-upload__preview-remove"
                             aria-label="Удалить"
-                            disabled={processing}
-                            onClick={() => removePendingItem(item.localId)}
+                            disabled={previewBusy}
+                            onClick={() => void removePendingItem(item.localId)}
                           >
-                            <X size={14} aria-hidden />
+                            {deletingKey === item.localId ? (
+                              <IonSpinner name="crescent" />
+                            ) : (
+                              <X size={14} aria-hidden />
+                            )}
                           </button>
                         ) : null}
                         <span

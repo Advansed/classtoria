@@ -3,6 +3,7 @@ export type ClassImage = {
   date:                   string;
   preview:                string;
   file:                   string;
+  imageId?:               string;
 };
 
 /** Комментарий к событию (если приходит в `get_class`). */

@@ -113,6 +113,17 @@
   font-size: 9px;
 }
 
+.collection-upload__preview-remove ion-spinner {
+  width: 14px;
+  height: 14px;
+  --color: #fff;
+}
+
+.collection-upload__preview-status--saved {
+  background: rgba(60, 60, 60, 0.55);
+  font-size: 9px;
+}
+
 .collection-upload__preview-empty {
   margin: 10px 0 0;
   font-size: 13px;

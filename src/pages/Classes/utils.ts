@@ -53,12 +53,16 @@ export const parseClassImage = (row: unknown): ClassImage | null => {
     return null;
   }
   const o = row as Record<string, unknown>;
+  const idRaw = o.image_id ?? o.imageId ?? o.id;
+  const imageId = idRaw != null ? String(idRaw).trim() : '';
+
   return {
     date: readStr(o.date),
     preview: readStr(
       o.previewurl ?? o.preview_url ?? o.preview ?? o.thumb ?? o.thumbnail,
     ),
     file: readStr(o.fileurl ?? o.file_url ?? o.file ?? o.url ?? o.src),
+    ...(imageId ? { imageId } : {}),
   };
 };
 

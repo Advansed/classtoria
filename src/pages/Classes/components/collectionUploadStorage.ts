@@ -2,9 +2,12 @@ import { api, type ApiResponse } from '../../../api';
 import {
   fetchSignedImageUrl,
   isPresignedObjectUrl,
+  normalizeStoredImageKey,
   putFileToSignedUrl,
   withImageCacheBust,
 } from '../../PersonalPage/components/avatarUpload';
+import { deleteImage } from '../classesApi';
+import type { ClassImage } from '../types';
 import { logUploadAction, logUploadApi, logUploadError, logUploadOk } from './collectionUploadLog';
 
 type UploadUrlData = {
@@ -132,6 +135,152 @@ export const buildCollectionImageBasePath = (
   collectionId: string,
   imageId: string,
 ): string => `${classId.trim()}/${eventId.trim()}/${collectionId.trim()}/${imageId.trim()}`;
+
+const pairStoragePath = (primary: string, siblingSuffix: string, ownSuffix: string): string => {
+  const trimmed = primary.trim();
+  if (!trimmed) {
+    return '';
+  }
+  if (new RegExp(`${ownSuffix}$`, 'i').test(trimmed)) {
+    return trimmed.replace(new RegExp(`${ownSuffix}$`, 'i'), siblingSuffix);
+  }
+  return '';
+};
+
+/** Ключи S3 для file.jpg и preview.jpg (как в upload_url). */
+export const resolveImageStorageFilenames = (
+  img: ClassImage,
+  ctx: { classId: string; eventId: string; collectionId: string },
+): string[] => {
+  let file = normalizeStoredImageKey(img.file);
+  let preview = normalizeStoredImageKey(img.preview);
+
+  if (file && !preview) {
+    preview = pairStoragePath(file, '/preview.jpg', '/file.jpg');
+  } else if (preview && !file) {
+    file = pairStoragePath(preview, '/file.jpg', '/preview.jpg');
+  }
+
+  const imageId = img.imageId?.trim() ?? '';
+  if (imageId && (!file || !preview)) {
+    const base = buildCollectionImageBasePath(
+      ctx.classId,
+      ctx.eventId,
+      ctx.collectionId,
+      imageId,
+    );
+    file = file || `${base}/file.jpg`;
+    preview = preview || `${base}/preview.jpg`;
+  }
+
+  return [...new Set([file, preview].filter(Boolean))];
+};
+
+/** image_id из поля API или из пути `.../collectionId/imageId/file.jpg`. */
+export const resolveCollectionImageId = (
+  img: ClassImage,
+  fallbackImageId = '',
+): string => {
+  const fromField = img.imageId?.trim() ?? '';
+  if (fromField) {
+    return fromField;
+  }
+
+  for (const raw of [img.file, img.preview]) {
+    const key = normalizeStoredImageKey(raw);
+    const segments = key.split('/').filter(Boolean);
+    if (segments.length >= 4) {
+      return segments[3];
+    }
+  }
+
+  return fallbackImageId.trim();
+};
+
+export type DeleteCollectionImageContext = {
+  classId: string;
+  eventId: string;
+  collectionId: string;
+};
+
+/** `del_image` + при возможности `del_files3` для file/preview. */
+export const deleteCollectionImage = async (
+  token: string,
+  img: ClassImage,
+  ctx: DeleteCollectionImageContext,
+  fallbackImageId = '',
+): Promise<string> => {
+  const imageId = resolveCollectionImageId(img, fallbackImageId);
+  if (!imageId) {
+    throw new Error('Нет image_id для удаления');
+  }
+
+  logUploadAction('del_image: запрос', { imageId });
+
+  const res = await deleteImage({ token, imageId });
+  if (!res.success) {
+    const err = res.message?.trim() || 'Не удалось удалить фото';
+    logUploadError('del_image', err);
+    throw new Error(err);
+  }
+
+  logUploadOk('del_image', { imageId });
+
+  const filenames = resolveImageStorageFilenames(
+    { ...img, imageId },
+    ctx,
+  );
+
+  if (filenames.length > 0) {
+    try {
+      await deleteImageFilesFromStorage(token, filenames);
+    } catch (error) {
+      logUploadError('del_files3 после del_image', error);
+    }
+  }
+
+  return imageId;
+};
+
+/** `del_files3 { token, filename }` — удаление объекта в хранилище. */
+export const deleteFileFromStorage = async (token: string, filename: string): Promise<void> => {
+  const trimmedToken = token.trim();
+  const trimmedFilename = filename.trim();
+  if (!trimmedToken || !trimmedFilename) {
+    throw new Error('Нет данных для удаления файла');
+  }
+
+  logUploadAction('del_files3: запрос', { filename: trimmedFilename });
+
+  const res: ApiResponse<unknown> = await api('del_files3', {
+    token: trimmedToken,
+    filename: trimmedFilename,
+  });
+
+  logUploadApi('del_files3: ответ', res);
+
+  if (!res.success) {
+    const err = res.message?.trim() || 'Не удалось удалить файл';
+    logUploadError('del_files3', err);
+    throw new Error(err);
+  }
+
+  logUploadOk('del_files3', { filename: trimmedFilename });
+};
+
+export const deleteImageFilesFromStorage = async (
+  token: string,
+  filenames: string[],
+): Promise<void> => {
+  const unique = [...new Set(filenames.map((name) => name.trim()).filter(Boolean))];
+  if (unique.length === 0) {
+    throw new Error('Не удалось определить путь к файлу');
+  }
+
+  for (const filename of unique) {
+    await deleteFileFromStorage(token, filename);
+  }
+};
 
 export const uploadJpegToStorage = async (
   token: string,

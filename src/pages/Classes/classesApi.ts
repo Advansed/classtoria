@@ -286,6 +286,38 @@ export async function addImage(params: AddImageParams): Promise<ApiResponse<unkn
   return res;
 }
 
+export type DeleteImageParams = {
+  token: string;
+  imageId: string;
+};
+
+/** `post('del_image', { token, image_id })` — удаление фото из коллекции. */
+export async function deleteImage(params: DeleteImageParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const imageId = params.imageId.trim();
+
+  if (!trimmedToken || !imageId) {
+    return {
+      success: false,
+      data: null,
+      message: 'Нет данных для удаления фото',
+    };
+  }
+
+  const res = await api('del_image', {
+    token: trimmedToken,
+    image_id: imageId,
+  });
+
+  console.log('[collection-upload] del_image (API)', {
+    success: res.success,
+    message: res.message,
+    image_id: imageId,
+  });
+
+  return res;
+}
+
 /** @deprecated Используйте {@link getClasses}. */
 export const fetchUserClasses = getClasses;
 
