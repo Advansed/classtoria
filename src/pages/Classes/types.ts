@@ -56,6 +56,8 @@ export type ClassMember = {
   role:                   string;
   phone:                  string;
   authorized:             boolean;
+  /** Подтверждён в белом списке учителем/родкомом. */
+  checked:                boolean;
 };
 
 /** Параметры навигации в экраны класса. */

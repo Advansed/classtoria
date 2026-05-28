@@ -1,20 +1,7 @@
-import {
-  IonButton,
-  IonContent,
-  IonIcon,
-  IonPage,
-} from '@ionic/react';
-import {
-  calendarOutline,
-  cameraOutline,
-  homeOutline,
-  lockClosedOutline,
-  personOutline,
-} from 'ionicons/icons';
+import { IonContent, IonPage } from '@ionic/react';
+import { Calendar, Lock, User } from 'lucide-react';
 import { useHistory } from 'react-router-dom';
 import './StartPage.css';
-
-const GALLERY_IMG = '/images/start-gallery.png';
 
 const StartPage: React.FC = () => {
   const history = useHistory();
@@ -22,82 +9,42 @@ const StartPage: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen className="start-page">
-        <div className="start-page__wrap ion-padding-horizontal">
+        <div className="start-page__wrap">
           <header className="start-page__header">
-            <h1 className="start-page__title">Класстория</h1>
+            <div className="start-page__logo-cloud" aria-hidden />
+            <h1 className="start-page__title">КЭМСТОРИ</h1>
             <p className="start-page__subtitle">все фото в одном месте</p>
           </header>
 
-          <section className="start-page__card" aria-label="Событие и фотосессия">
-            <div className="start-page__section">
-              <div className="start-page__label-row">
-                <IonIcon icon={calendarOutline} aria-hidden />
-                <p className="start-page__label">Событие</p>
-              </div>
-              <h2 className="start-page__section-title">Открытый урок</h2>
-              <p className="start-page__body-text">
-                Урок, на котором родители смогли увидеть, как проходит занятие, как дети отвечают,
-                работают в группе и участвуют в обсуждении.
-              </p>
+          <section className="start-page__card" aria-label="Событие">
+            <div className="start-page__label-row">
+              <Calendar size={18} className="start-page__label-icon" aria-hidden />
+              <p className="start-page__label">Событие</p>
             </div>
-
-            <div className="start-page__section">
-              <div className="start-page__label-row">
-                <IonIcon icon={cameraOutline} aria-hidden />
-                <p className="start-page__label">Фотосессия</p>
-              </div>
-              <h2 className="start-page__section-title">Фотки с открытого урока</h2>
-              <div className="start-page__gallery">
-                <div className="start-page__thumb start-page__thumb--left">
-                  <img src={GALLERY_IMG} alt="" loading="lazy" decoding="async" />
-                </div>
-                <div className="start-page__thumb start-page__thumb--center">
-                  <img src={GALLERY_IMG} alt="" loading="lazy" decoding="async" />
-                </div>
-                <div className="start-page__thumb start-page__thumb--right">
-                  <img src={GALLERY_IMG} alt="" loading="lazy" decoding="async" />
-                </div>
-              </div>
-            </div>
+            <h2 className="start-page__event-title">Открытый урок</h2>
+            <p className="start-page__body-text">
+              Урок, на котором родители смогли увидеть, как проходит занятие, как дети отвечают,
+              работают в группе и участвуют в обсуждении.
+            </p>
           </section>
 
-          <IonButton
-            expand="block"
+          <button
+            type="button"
             className="start-page__auth-btn"
             onClick={() => history.push('/auth')}
           >
-            <IonIcon slot="start" icon={personOutline} aria-hidden />
+            <User size={22} strokeWidth={2} aria-hidden />
             Авторизация
-          </IonButton>
+          </button>
 
           <p className="start-page__hint">
             Войдите, чтобы посмотреть все фото и видео события
           </p>
 
-          <footer className="start-page__footer">
-            <IonIcon icon={lockClosedOutline} aria-hidden />
-            <p className="start-page__footer-text">Доступ только для участников события</p>
+          <footer className="start-page__access">
+            <Lock size={16} aria-hidden />
+            <p className="start-page__access-text">Доступ только для участников события</p>
           </footer>
-
-          <div className="start-page__secondary">
-            <IonButton
-              fill="clear"
-              size="small"
-              className="start-page__secondary-btn"
-              onClick={() => history.push('/personal/home')}
-            >
-              <IonIcon slot="start" icon={homeOutline} aria-hidden />
-              Личный кабинет
-            </IonButton>
-            <IonButton
-              fill="clear"
-              size="small"
-              className="start-page__secondary-btn"
-              onClick={() => history.push('/personal/class/cabinet')}
-            >
-              Кабинет класса
-            </IonButton>
-          </div>
         </div>
       </IonContent>
     </IonPage>

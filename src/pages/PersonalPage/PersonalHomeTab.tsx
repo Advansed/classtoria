@@ -1,155 +1,112 @@
+﻿import { IonContent, IonPage } from '@ionic/react';
 import {
-  IonBadge,
-  IonButton,
-  IonContent,
-  IonIcon,
-  IonPage,
-  IonSelect,
-  IonSelectOption,
-} from '@ionic/react';
-import {
-  calendarOutline,
-  chatbubbleOutline,
-  chevronForwardOutline,
-  addOutline,
-  notificationsOutline,
-} from 'ionicons/icons';
+  Bell,
+  ChevronRight,
+  Heart,
+  ImagePlus,
+  PlusCircle,
+  Star,
+  UserPlus,
+} from 'lucide-react';
+import { useHistory } from 'react-router-dom';
 import { useAvatarDisplayUrl } from '../../hooks/useAvatarDisplayUrl';
-import { useStore } from '../../Store';
 import './PersonalHomeTab.css';
 
-const EVENT_IMG = '/images/start-gallery.png';
+const EMPTY_ILLUSTRATION = '/images/auth-feature.png';
 
-const MOCK_CHILDREN = [
+const HOW_IT_WORKS = [
   {
-    id: '1',
-    name: 'София Иванова',
-    classLabel: '7Б класс',
-    school: 'СОШ №17',
+    id: 'add',
+    title: '1. Добавьте ребенка',
+    text: 'Укажите Имя Фамилия, Класс и Школу',
+    icon: UserPlus,
   },
-];
-
-const MOCK_EVENTS = [
-  { id: '1', title: 'Линейка 1 сентября', date: '01.09.2025', classLabel: '7Б класс', comments: 12 },
-  { id: '2', title: 'День знаний', date: '02.09.2025', classLabel: '7Б класс', comments: 8 },
-  { id: '3', title: 'Экскурсия в музей', date: '15.09.2025', classLabel: '7Б класс', comments: 5 },
-  { id: '4', title: 'Спортивный день', date: '20.09.2025', classLabel: '7Б класс', comments: 15 },
-];
+  {
+    id: 'pick',
+    title: '2. Зайдите в кабинет класса и выберите фотографии, которые вы хотите сохранить у себя',
+    text: '',
+    icon: ImagePlus,
+  },
+  {
+    id: 'save',
+    title: '3. Выбранные фотографии также пойдут в личный кабинет вашего ребенка',
+    text: '',
+    icon: Heart,
+  },
+] as const;
 
 const PersonalHomeTab: React.FC = () => {
-  const profile = useStore((s) => s.profile);
+  const history = useHistory();
   const avatarSrc = useAvatarDisplayUrl();
-  const displayName = profile?.name?.trim() || '—';
 
   return (
     <IonPage>
       <IonContent fullscreen className="personal-home">
         <div className="personal-home__scroll">
-          <header className="personal-home__profile-card">
-            <div className="personal-home__user">
-              <div className="personal-home__avatar-wrap">
-                <img
-                  key={avatarSrc}
-                  src={avatarSrc}
-                  alt=""
-                  className="personal-home__avatar"
-                  width={52}
-                  height={52}
-                />
-              </div>
-              <p className="personal-home__name">{displayName}</p>
+
+          <header className="personal-home__header">
+            <div>
+              <p className="personal-home__title">Мои дети</p>
+              <p className="personal-home__subtitle">Добавьте ребёнка, чтобы увидеть его историю</p>
             </div>
-            <button
-              type="button"
-              className="personal-home__notify"
-              aria-label="Уведомления, непрочитано: 4"
-            >
-              <span className="personal-home__notify-icon-wrap" aria-hidden>
-                <IonIcon icon={notificationsOutline} className="personal-home__notify-icon" />
-                <IonBadge color="danger" className="personal-home__notify-badge">
-                  4
-                </IonBadge>
-              </span>
-              <span className="personal-home__notify-text">Уведомления</span>
-            </button>
+            <div className="personal-home__header-actions">
+              <button type="button" className="personal-home__notify" aria-label="Уведомления">
+                <Bell size={21} />
+              </button>
+              <img src={avatarSrc} alt="" className="personal-home__avatar" width={42} height={42} />
+            </div>
           </header>
 
-          <section className="personal-home__section" aria-labelledby="personal-children-heading">
-            <div className="personal-home__section-head">
-              <h2 id="personal-children-heading" className="personal-home__h2">
-                Мои дети
-              </h2>
-              <IonSelect
-                interface="popover"
-                className="personal-home__year-select"
-                value="2025-2026"
-                aria-label="Учебный год"
-              >
-                <IonSelectOption value="2025-2026">2025–2026</IonSelectOption>
-                <IonSelectOption value="2024-2025">2024–2025</IonSelectOption>
-              </IonSelect>
+          <section className="personal-home__empty-card" aria-label="Нет добавленных детей">
+            <div className="personal-home__illustration-wrap">
+              <img src={EMPTY_ILLUSTRATION} alt="" className="personal-home__illustration" />
             </div>
 
-            <div className="personal-home__children-grid">
-              {MOCK_CHILDREN.map((c) => (
-                <article key={c.id} className="personal-home__child-card">
-                  <div className="personal-home__child-top">
-                    <img
-                      src={EVENT_IMG}
-                      alt=""
-                      className="personal-home__child-avatar"
-                      width={40}
-                      height={40}
-                    />
-                    <div className="personal-home__child-info">
-                      <p className="personal-home__child-name">{c.name}</p>
-                      <p className="personal-home__child-meta">{c.classLabel}</p>
-                      <p className="personal-home__child-meta">{c.school}</p>
-                    </div>
-                  </div>
-                  <IonButton expand="block" className="personal-home__child-btn">
-                    Перейти в ЛК класса
-                    <IonIcon slot="end" icon={chevronForwardOutline} aria-hidden />
-                  </IonButton>
-                </article>
-              ))}
-              <button type="button" className="personal-home__add-child">
-                <IonIcon icon={addOutline} className="personal-home__add-icon" aria-hidden />
-                <span>Добавить ребёнка</span>
-              </button>
-            </div>
+            <h2 className="personal-home__empty-title">У вас пока нет добавленных детей</h2>
+            <p className="personal-home__empty-text">
+              Добавьте ребёнка, чтобы открыть доступ к его школьной истории, событиям класса
+              и выбранным фотографиям.
+            </p>
+
+            <button
+              type="button"
+              className="personal-home__add-btn"
+              onClick={() => history.push('/personal/child-add')}
+            >
+              <PlusCircle size={20} />
+              Добавить ребёнка
+            </button>
           </section>
 
-          <section className="personal-home__section" aria-labelledby="personal-events-heading">
-            <div className="personal-home__events-head">
-              <span className="personal-home__events-icon" aria-hidden>
-                <IonIcon icon={calendarOutline} />
-              </span>
-              <h2 id="personal-events-heading" className="personal-home__h2">
-                События классов
-              </h2>
-            </div>
-            <div className="personal-home__event-grid">
-              {MOCK_EVENTS.map((ev) => (
-                <article key={ev.id} className="personal-home__event-card">
-                  <div className="personal-home__event-img-wrap">
-                    <img src={EVENT_IMG} alt="" loading="lazy" decoding="async" />
-                  </div>
-                  <div className="personal-home__event-body">
-                    <div className="personal-home__event-title-row">
-                      <h3 className="personal-home__event-title">{ev.title}</h3>
-                      <span className="personal-home__event-comments" aria-label={`${ev.comments} комментариев`}>
-                        <IonIcon icon={chatbubbleOutline} aria-hidden />
-                        {ev.comments}
-                      </span>
+          <section className="personal-home__how" aria-labelledby="how-title">
+            <h2 id="how-title" className="personal-home__how-title">Как это работает</h2>
+
+            <div className="personal-home__steps">
+              {HOW_IT_WORKS.map((step) => {
+                const Icon = step.icon;
+                return (
+                  <article key={step.id} className="personal-home__step-card">
+                    <span className="personal-home__step-icon-wrap" aria-hidden>
+                      <Icon size={20} />
+                    </span>
+                    <div className="personal-home__step-content">
+                      <p className="personal-home__step-title">{step.title}</p>
+                      {step.text ? <p className="personal-home__step-text">{step.text}</p> : null}
                     </div>
-                    <p className="personal-home__event-meta">
-                      {ev.date} · {ev.classLabel}
-                    </p>
-                  </div>
-                </article>
-              ))}
+                    <ChevronRight size={18} className="personal-home__step-chevron" aria-hidden />
+                  </article>
+                );
+              })}
             </div>
+
+            <article className="personal-home__tip-card">
+              <span className="personal-home__tip-icon-wrap" aria-hidden>
+                <Star size={18} />
+              </span>
+              <p className="personal-home__tip-text">
+                После добавления ребёнка здесь появится его история по годам.
+              </p>
+            </article>
           </section>
 
           <div className="personal-home__bottom-spacer" aria-hidden />

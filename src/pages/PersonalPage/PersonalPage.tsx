@@ -9,6 +9,7 @@ import {
 import { homeOutline, peopleOutline, personOutline } from 'ionicons/icons';
 import { Redirect, Route } from 'react-router-dom';
 import ProfileTab from './components/ProfileTab';
+import AddChildPage from './components/AddChildPage';
 import ClassCabinetPage from '../Classes/components/ClassCabinetPage';
 import ClassWhitelistPage from '../Classes/ClassWhitelistPage';
 import CollectionUploadPage from '../Classes/components/CollectionUploadPage';
@@ -43,6 +44,7 @@ const PersonalPage: React.FC = () => {
     <IonTabs>
       <IonRouterOutlet>
         <Route path="/personal/home" exact={true} component={PersonalHomeTab} />
+        <Route path="/personal/child-add" exact={true} component={AddChildPage} />
         <Route path={CLASSES_CABINET} exact={true} component={ClassCabinetPage} />
         <Route path={CLASSES_EVENT_VIEW} exact={true} component={EventViewPage} />
         <Route path={CLASSES_COLLECTION_VIEW} exact={true} component={CollectionViewPage} />

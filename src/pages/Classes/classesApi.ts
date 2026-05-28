@@ -105,6 +105,60 @@ export async function addMember(params: AddMemberParams): Promise<ApiResponse<un
   });
 }
 
+export type SetMemberParams = {
+  token: string;
+  classId: string;
+  id: string;
+};
+
+/** `post('set_member', { token, class_id, id })` — подтверждение в белом списке. */
+export async function setMember(params: SetMemberParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const classId = params.classId.trim();
+  const id = params.id.trim();
+
+  if (!trimmedToken || !classId || !id) {
+    return {
+      success: false,
+      data: null,
+      message: 'Недостаточно данных для подтверждения',
+    };
+  }
+
+  return api('set_member', {
+    token: trimmedToken,
+    class_id: classId,
+    id,
+  });
+}
+
+export type DeleteMemberParams = {
+  token: string;
+  classId: string;
+  id: string;
+};
+
+/** `post('del_member', { token, class_id, id })` — удаление участника из белого списка. */
+export async function deleteMember(params: DeleteMemberParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const classId = params.classId.trim();
+  const id = params.id.trim();
+
+  if (!trimmedToken || !classId || !id) {
+    return {
+      success: false,
+      data: null,
+      message: 'Недостаточно данных для удаления',
+    };
+  }
+
+  return api('del_member', {
+    token: trimmedToken,
+    class_id: classId,
+    id,
+  });
+}
+
 export type AddEventParams = {
   token:                  string;
   classId:                string;

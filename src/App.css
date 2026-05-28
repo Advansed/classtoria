@@ -17,6 +17,7 @@
  * transform создаёт containing block — fixed привязывается к .phone-shell, а не к окну.
  */
 .phone-shell {
+  font-family: var(--ion-font-family);
   /* Все страницы: не шире 420px; на узком экране — 100% ширины */
   width: 100%;
   max-width: 420px;

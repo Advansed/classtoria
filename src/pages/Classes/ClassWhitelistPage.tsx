@@ -1,7 +1,6 @@
 import {
   IonAlert,
   IonBackButton,
-  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
@@ -14,11 +13,11 @@ import {
   IonToolbar,
 } from '@ionic/react';
 import {
-  addOutline,
   chevronBackOutline,
   chevronForwardOutline,
   peopleOutline,
   schoolOutline,
+  trashOutline,
 } from 'ionicons/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -35,6 +34,7 @@ import {
   formatPhoneDisplay,
   isClassAdminRole,
   resolveWhitelistTeacher,
+  splitMembersByChecked,
 } from './utils';
 import './ClassParentsListPage.css';
 
@@ -68,6 +68,13 @@ const ADD_MEMBER_DIALOG: Record<
   },
 };
 
+const TEACHER_CHANGE_DIALOG = {
+  header: 'Изменить классного руководителя',
+  message: 'Введите номер телефона нового классного руководителя',
+  success: 'Классный руководитель изменён',
+  error: 'Не удалось изменить классного руководителя',
+};
+
 const studentCountLabel = (count: number): string => {
   const n = Math.abs(count) % 100;
   const n1 = n % 10;
@@ -98,42 +105,60 @@ const parentCountLabel = (count: number): string => {
   return `${count} родителей`;
 };
 
-type MemberRowProps = {
-  member: ClassMember;
-  nameLabel: string;
+type EditHandlers = {
   editingId: string | null;
   draftName: string;
   draftPhone: string;
+  confirmingId: string | null;
+  deletingId: string | null;
   onDraftName: (value: string) => void;
   onDraftPhone: (value: string) => void;
   onStartEdit: (member: ClassMember) => void;
   onCancelEdit: () => void;
   onSaveEdit: (memberId: string) => void;
   onToggleAuthorized: (member: ClassMember) => void;
+  onConfirm: (member: ClassMember) => void;
+  onDelete: (member: ClassMember) => void;
+};
+
+type MemberRowProps = EditHandlers & {
+  member: ClassMember;
+  nameLabel: string;
+  variant: 'confirmed' | 'pending';
 };
 
 const MemberRow: React.FC<MemberRowProps> = ({
   member,
   nameLabel,
+  variant,
   editingId,
   draftName,
   draftPhone,
+  confirmingId,
+  deletingId,
   onDraftName,
   onDraftPhone,
   onStartEdit,
   onCancelEdit,
   onSaveEdit,
   onToggleAuthorized,
+  onConfirm,
+  onDelete,
 }) => {
   const isEditing = editingId === member.id;
+  const isPending = variant === 'pending';
+  const isConfirming = confirmingId === member.id;
+  const isDeleting = deletingId === member.id;
 
   return (
     <li>
       <div
-        className={`class-members-list__row${isEditing ? ' class-members-list__row--editing' : ''}`}
+        className={`class-members-list__row class-members-list__row--${variant}${
+          isEditing ? ' class-members-list__row--editing' : ''
+        }`}
       >
         <div className="class-members-list__cell class-members-list__cell--name">
-          {isEditing ? (
+          {isEditing && !isPending ? (
             <IonInput
               className="class-members-list__input"
               value={draftName}
@@ -145,7 +170,7 @@ const MemberRow: React.FC<MemberRowProps> = ({
           )}
         </div>
         <div className="class-members-list__cell class-members-list__cell--phone">
-          {isEditing ? (
+          {isEditing && !isPending ? (
             <IonInput
               className="class-members-list__input"
               type="tel"
@@ -161,21 +186,32 @@ const MemberRow: React.FC<MemberRowProps> = ({
           )}
         </div>
         <div className="class-members-list__cell class-members-list__cell--status">
-          <button
-            type="button"
-            className={`class-members-list__status${
-              member.authorized
-                ? ' class-members-list__status--ok'
-                : ' class-members-list__status--pending'
-            }`}
-            onClick={() => onToggleAuthorized(member)}
-            disabled={isEditing}
-          >
-            {member.authorized ? 'Авторизовался' : 'Пока еще нет'}
-          </button>
+          {isPending ? null : (
+            <button
+              type="button"
+              className={`class-members-list__status${
+                member.authorized
+                  ? ' class-members-list__status--ok'
+                  : ' class-members-list__status--pending'
+              }`}
+              onClick={() => onToggleAuthorized(member)}
+              disabled={isEditing}
+            >
+              {member.authorized ? 'Вошёл' : ''}
+            </button>
+          )}
         </div>
         <div className="class-members-list__cell class-members-list__cell--action">
-          {isEditing ? (
+          {isPending ? (
+            <button
+              type="button"
+              className="class-members-list__confirm-btn"
+              disabled={isConfirming}
+              onClick={() => onConfirm(member)}
+            >
+              {isConfirming ? '…' : 'Подтвердить'}
+            </button>
+          ) : isEditing ? (
             <div className="class-members-list__edit-actions">
               <button type="button" className="class-members-list__save" onClick={() => onSaveEdit(member.id)}>
                 OK
@@ -185,14 +221,25 @@ const MemberRow: React.FC<MemberRowProps> = ({
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              className="class-members-list__row-btn"
-              aria-label={`Редактировать ${member.name}`}
-              onClick={() => onStartEdit(member)}
-            >
-              <IonIcon icon={chevronForwardOutline} aria-hidden />
-            </button>
+            <div className="class-members-list__row-actions">
+              <button
+                type="button"
+                className="class-members-list__delete-btn"
+                onClick={() => onDelete(member)}
+                disabled={isDeleting}
+              >
+                {isDeleting ? '…' : 'Удалить'}
+              </button>
+              <button
+                type="button"
+                className="class-members-list__row-btn"
+                aria-label={`Редактировать ${member.name}`}
+                onClick={() => onStartEdit(member)}
+                disabled={isDeleting}
+              >
+                <IonIcon icon={chevronForwardOutline} aria-hidden />
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -200,19 +247,76 @@ const MemberRow: React.FC<MemberRowProps> = ({
   );
 };
 
-type EditHandlers = {
-  editingId: string | null;
-  draftName: string;
-  draftPhone: string;
-  onDraftName: (value: string) => void;
-  onDraftPhone: (value: string) => void;
-  onStartEdit: (member: ClassMember) => void;
-  onCancelEdit: () => void;
-  onSaveEdit: (memberId: string) => void;
-  onToggleAuthorized: (member: ClassMember) => void;
+type MemberTableProps = EditHandlers & {
+  members: ClassMember[];
+  variant: 'confirmed' | 'pending';
+  nameColumnLabel: string;
+  nameFieldLabel: string;
+  listId: string;
 };
 
-type MemberListSectionProps = {
+const MemberTable: React.FC<MemberTableProps> = ({
+  members,
+  variant,
+  nameColumnLabel,
+  nameFieldLabel,
+  listId,
+  ...editHandlers
+}) => (
+  <div className={`class-members-list__table-wrap class-members-list__table-wrap--${variant}`}>
+    <div className="class-members-list__table-head" aria-hidden>
+      <span>{nameColumnLabel}</span>
+      <span>Номер</span>
+      <span>{variant === 'pending' ? '' : 'Статус'}</span>
+      <span />
+    </div>
+    <ul id={listId} className="class-members-list__rows">
+      {members.map((member) => (
+        <MemberRow
+          key={member.id}
+          member={member}
+          nameLabel={nameFieldLabel}
+          variant={variant}
+          {...editHandlers}
+        />
+      ))}
+    </ul>
+  </div>
+);
+
+type SectionHeadProps = {
+  id: string;
+  title: string;
+  onAction?: () => void;
+  actionLabel?: string;
+  actionDisabled?: boolean;
+};
+
+const SectionHead: React.FC<SectionHeadProps> = ({
+  id,
+  title,
+  onAction,
+  actionLabel = '+ Добавить',
+  actionDisabled,
+}) => (
+  <div className="class-members-list__section-head">
+    <h2 id={id} className="class-members-list__h2">
+      {title}
+    </h2>
+    {onAction ? (
+      <button
+        type="button"
+        className="class-members-list__head-add"
+        onClick={onAction}
+        disabled={actionDisabled}
+      >
+        {actionLabel}
+      </button>
+    ) : null}
+  </div>
+);
+
+type MemberSplitListSectionProps = {
   headingId: string;
   title: string;
   members: ClassMember[];
@@ -220,9 +324,11 @@ type MemberListSectionProps = {
   nameFieldLabel: string;
   emptyText: string;
   editHandlers: EditHandlers;
+  onAdd?: () => void;
+  addDisabled?: boolean;
 };
 
-const MemberListSection: React.FC<MemberListSectionProps> = ({
+const MemberSplitListSection: React.FC<MemberSplitListSectionProps> = ({
   headingId,
   title,
   members,
@@ -230,35 +336,70 @@ const MemberListSection: React.FC<MemberListSectionProps> = ({
   nameFieldLabel,
   emptyText,
   editHandlers,
-}) => (
-  <section className="class-members-list__card" aria-labelledby={headingId}>
-    <h2 id={headingId} className="class-members-list__h2">
-      {title}
-    </h2>
-    {members.length === 0 ? (
-      <p className="class-members-list__empty">{emptyText}</p>
-    ) : (
-      <div className="class-members-list__table-wrap">
-        <div className="class-members-list__table-head" aria-hidden>
-          <span>{nameColumnLabel}</span>
-          <span>Номер телефона</span>
-          <span>Статус</span>
-          <span />
-        </div>
-        <ul className="class-members-list__rows">
-          {members.map((member) => (
-            <MemberRow
-              key={member.id}
-              member={member}
-              nameLabel={nameFieldLabel}
+  onAdd,
+  addDisabled,
+}) => {
+  const { confirmed, pending } = useMemo(() => splitMembersByChecked(members), [members]);
+  const titleWithCount = `${title} (${members.length})`;
+
+  if (members.length === 0) {
+    return (
+      <section className="class-members-list__card" aria-labelledby={headingId}>
+        <SectionHead
+          id={headingId}
+          title={titleWithCount}
+          onAction={onAdd}
+          actionDisabled={addDisabled}
+        />
+        <p className="class-members-list__empty">{emptyText}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="class-members-list__card" aria-labelledby={headingId}>
+      <SectionHead
+        id={headingId}
+        title={titleWithCount}
+        onAction={onAdd}
+        actionDisabled={addDisabled}
+      />
+
+      <div className="class-members-list__split">
+        <div className="class-members-list__subsection class-members-list__subsection--confirmed">
+          {confirmed.length === 0 ? (
+            <p className="class-members-list__empty class-members-list__empty--compact">
+              Пока нет подтверждённых
+            </p>
+          ) : (
+            <MemberTable
+              members={confirmed}
+              variant="confirmed"
+              nameColumnLabel={nameColumnLabel}
+              nameFieldLabel={nameFieldLabel}
+              listId={`${headingId}-confirmed`}
               {...editHandlers}
             />
-          ))}
-        </ul>
+          )}
+        </div>
+
+        {pending.length > 0 ? (
+          <div className="class-members-list__subsection class-members-list__subsection--pending">
+            <h3 className="class-members-list__h3">Не подтверждённые ({pending.length})</h3>
+            <MemberTable
+              members={pending}
+              variant="pending"
+              nameColumnLabel={nameColumnLabel}
+              nameFieldLabel={nameFieldLabel}
+              listId={`${headingId}-pending`}
+              {...editHandlers}
+            />
+          </div>
+        ) : null}
       </div>
-    )}
-  </section>
-);
+    </section>
+  );
+};
 
 const ClassWhitelistPage: React.FC = () => {
   const location = useLocation<ClassRouteState>();
@@ -277,15 +418,20 @@ const ClassWhitelistPage: React.FC = () => {
   const classDetail = useClassesStore((s) =>
     classId ? s.classes.find((c) => c.id === classId) : undefined,
   );
+  console.log(classDetail);
   const members = classDetail?.members;
   const students = useMemo(() => filterStudents(members ?? []), [members]);
   const parents = useMemo(() => filterParents(members ?? []), [members]);
   const teacherMembers = useMemo(() => filterTeachers(members ?? []), [members]);
   const updateMember = useClassesStore((s) => s.updateMember);
+  const confirmMember = useClassesStore((s) => s.confirmMember);
+  const deleteMember = useClassesStore((s) => s.deleteMember);
   const addMember = useClassesStore((s) => s.addMember);
 
   const [activeTab, setActiveTab] = useState<WhitelistTab>('students');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   const [draftPhone, setDraftPhone] = useState('');
   const [addMemberDialog, setAddMemberDialog] = useState<AddMemberDialogRole | null>(null);
@@ -312,6 +458,19 @@ const ClassWhitelistPage: React.FC = () => {
       classTeacher?.id,
   );
 
+  const addMemberDialogCopy = useMemo(() => {
+    if (!addMemberDialog) {
+      return null;
+    }
+    if (addMemberDialog === 'teacher' && hasTeacher) {
+      return TEACHER_CHANGE_DIALOG;
+    }
+    return ADD_MEMBER_DIALOG[addMemberDialog];
+  }, [addMemberDialog, hasTeacher]);
+
+  const addMemberDialogSubmitLabel =
+    addMemberDialog === 'teacher' && hasTeacher ? 'Сохранить' : 'Добавить';
+
   const countBadgeLabel =
     activeTab === 'students'
       ? studentCountLabel(students.length)
@@ -323,6 +482,8 @@ const ClassWhitelistPage: React.FC = () => {
     setDraftName('');
     setDraftPhone('');
   };
+
+  console.log(members)
 
   useEffect(() => {
     if (!classId || !token?.trim()) {
@@ -341,9 +502,14 @@ const ClassWhitelistPage: React.FC = () => {
       editingId,
       draftName,
       draftPhone,
+      confirmingId,
+      deletingId,
       onDraftName: setDraftName,
       onDraftPhone: setDraftPhone,
       onStartEdit: (member: ClassMember) => {
+        if (!member.checked) {
+          return;
+        }
         setEditingId(member.id);
         setDraftName(member.name);
         setDraftPhone(formatPhoneDisplay(member.phone) || member.phone);
@@ -370,13 +536,89 @@ const ClassWhitelistPage: React.FC = () => {
         setDraftPhone('');
       },
       onToggleAuthorized: (member: ClassMember) => {
-        if (!classId) {
+        if (!classId || !member.checked) {
           return;
         }
         updateMember(classId, member.id, { authorized: !member.authorized });
       },
+      onConfirm: (member: ClassMember) => {
+        const trimmedToken = token?.trim();
+        if (!trimmedToken || !classId) {
+          toast.warning('Нет данных для подтверждения');
+          return;
+        }
+        setConfirmingId(member.id);
+        void confirmMember({
+          token: trimmedToken,
+          classId,
+          userId: member.id,
+          schoolId,
+          name: classNameFromRoute,
+        })
+          .then((result) => {
+            if (result.success) {
+              toast.success(result.message ?? 'Участник подтверждён');
+              setEditingId(null);
+            } else {
+              toast.error(result.message ?? 'Не удалось подтвердить');
+            }
+          })
+          .catch(() => {
+            toast.error('Ошибка сети');
+          })
+          .finally(() => {
+            setConfirmingId(null);
+          });
+      },
+      onDelete: (member: ClassMember) => {
+        const trimmedToken = token?.trim();
+        if (!trimmedToken || !classId) {
+          toast.warning('Нет данных для удаления');
+          return;
+        }
+        setDeletingId(member.id);
+        void deleteMember({
+          token: trimmedToken,
+          classId,
+          userId: member.id,
+          schoolId,
+          name: classNameFromRoute,
+        })
+          .then((result) => {
+            if (result.success) {
+              toast.success(result.message ?? 'Участник удалён');
+              if (editingId === member.id) {
+                setEditingId(null);
+                setDraftName('');
+                setDraftPhone('');
+              }
+            } else {
+              toast.error(result.message ?? 'Не удалось удалить');
+            }
+          })
+          .catch(() => {
+            toast.error('Ошибка сети');
+          })
+          .finally(() => {
+            setDeletingId(null);
+          });
+      },
     }),
-    [classId, draftName, draftPhone, editingId, updateMember],
+    [
+      classId,
+      classNameFromRoute,
+      confirmMember,
+      draftName,
+      draftPhone,
+      editingId,
+      confirmingId,
+      deletingId,
+      deleteMember,
+      schoolId,
+      token,
+      toast,
+      updateMember,
+    ],
   );
 
   const openAddMemberDialog = (role: AddMemberDialogRole) => {
@@ -387,7 +629,11 @@ const ClassWhitelistPage: React.FC = () => {
     setAddMemberDialog(role);
   };
 
-  const submitAddMember = async (phoneRaw: string, role: AddMemberDialogRole) => {
+  const submitAddMember = async (
+    phoneRaw: string,
+    role: AddMemberDialogRole,
+    isTeacherChange = false,
+  ) => {
     const trimmedToken = token?.trim();
     if (!trimmedToken || !classId) {
       toast.warning('Нет данных для добавления');
@@ -400,7 +646,8 @@ const ClassWhitelistPage: React.FC = () => {
       return;
     }
 
-    const labels = ADD_MEMBER_DIALOG[role];
+    const labels =
+      role === 'teacher' && isTeacherChange ? TEACHER_CHANGE_DIALOG : ADD_MEMBER_DIALOG[role];
     setAddMemberDialog(null);
     setIsAddingMember(true);
     try {
@@ -431,6 +678,7 @@ const ClassWhitelistPage: React.FC = () => {
 
   return (
     <IonPage>
+
       <IonHeader className="class-members-list__header">
         <IonToolbar>
           <IonButtons slot="start">
@@ -472,9 +720,13 @@ const ClassWhitelistPage: React.FC = () => {
             className="class-members-list__card class-members-list__teacher-card"
             aria-labelledby="whitelist-teacher-heading"
           >
-            <h2 id="whitelist-teacher-heading" className="class-members-list__h2">
-              Классный руководитель
-            </h2>
+            <SectionHead
+              id="whitelist-teacher-heading"
+              title="Классный руководитель"
+              onAction={isClassAdmin ? () => openAddMemberDialog('teacher') : undefined}
+              actionLabel={hasTeacher ? 'Изменить' : '+ Добавить'}
+              actionDisabled={isAddingMember}
+            />
             {hasTeacher ? (
               <div className="class-members-list__teacher-row">
                 <img
@@ -506,7 +758,7 @@ const ClassWhitelistPage: React.FC = () => {
                       }
                     }}
                   >
-                    {teacherCard.authorized ? 'Вошёл в систему' : 'Ещё не входил'}
+                    {teacherCard.authorized ? 'Вошёл в систему' : ''}
                   </button>
                 ) : null}
               </div>
@@ -517,45 +769,11 @@ const ClassWhitelistPage: React.FC = () => {
             )}
           </section>
 
-          <section className="class-members-list__actions" aria-label="Действия белого списка">
-            <IonButton
-              expand="block"
-              className="class-members-list__action-btn"
-              onClick={() => openAddMemberDialog('student')}
-              disabled={isAddingMember}
-            >
-              <IonIcon slot="start" icon={addOutline} aria-hidden />
-              Добавить ученика
-            </IonButton>
-            <IonButton
-              expand="block"
-              className="class-members-list__action-btn class-members-list__action-btn--secondary"
-              fill="outline"
-              onClick={() => openAddMemberDialog('parent')}
-              disabled={isAddingMember}
-            >
-              <IonIcon slot="start" icon={addOutline} aria-hidden />
-              Добавить родителя
-            </IonButton>
-            {isClassAdmin ? (
-              <IonButton
-                expand="block"
-                className="class-members-list__action-btn class-members-list__action-btn--secondary"
-                fill="outline"
-                onClick={() => openAddMemberDialog('teacher')}
-                disabled={isAddingMember}
-              >
-                <IonIcon slot="start" icon={addOutline} aria-hidden />
-                Добавить учителя
-              </IonButton>
-            ) : null}
-          </section>
-
           <IonAlert
             isOpen={addMemberDialog !== null}
             onDidDismiss={() => setAddMemberDialog(null)}
-            header={addMemberDialog ? ADD_MEMBER_DIALOG[addMemberDialog].header : ''}
-            message={addMemberDialog ? ADD_MEMBER_DIALOG[addMemberDialog].message : ''}
+            header={addMemberDialogCopy?.header ?? ''}
+            message={addMemberDialogCopy?.message ?? ''}
             inputs={[
               {
                 name: 'phone',
@@ -566,7 +784,7 @@ const ClassWhitelistPage: React.FC = () => {
             buttons={[
               { text: 'Отмена', role: 'cancel' },
               {
-                text: 'Добавить',
+                text: addMemberDialogSubmitLabel,
                 handler: (data) => {
                   const phone = String(data?.phone ?? '');
                   if (normalizePhoneDigits(phone).length < 11) {
@@ -574,7 +792,7 @@ const ClassWhitelistPage: React.FC = () => {
                     return false;
                   }
                   if (addMemberDialog) {
-                    void submitAddMember(phone, addMemberDialog);
+                    void submitAddMember(phone, addMemberDialog, hasTeacher);
                   }
                 },
               },
@@ -603,7 +821,7 @@ const ClassWhitelistPage: React.FC = () => {
           </div>
 
           {activeTab === 'students' ? (
-            <MemberListSection
+            <MemberSplitListSection
               headingId="students-list-heading"
               title="Список учеников"
               members={students}
@@ -611,9 +829,11 @@ const ClassWhitelistPage: React.FC = () => {
               nameFieldLabel="ФИО ученика"
               emptyText="В белом списке пока нет учеников"
               editHandlers={editHandlers}
+              onAdd={() => openAddMemberDialog('student')}
+              addDisabled={isAddingMember}
             />
           ) : (
-            <MemberListSection
+            <MemberSplitListSection
               headingId="parents-list-heading"
               title="Список родителей"
               members={parents}
@@ -621,12 +841,15 @@ const ClassWhitelistPage: React.FC = () => {
               nameFieldLabel="ФИО родителя"
               emptyText="В белом списке пока нет родителей"
               editHandlers={editHandlers}
+              onAdd={() => openAddMemberDialog('parent')}
+              addDisabled={isAddingMember}
             />
           )}
 
           <div className="class-members-list__bottom-spacer" aria-hidden />
         </div>
       </IonContent>
+
     </IonPage>
   );
 };

@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_DADATA_TOKEN?: string;
   readonly VITE_WS_URL?: string;
   /** HTTP API proxy `^/node/` (не WebSocket) */
   readonly VITE_PROXY_TARGET?: string;

@@ -205,6 +205,21 @@ export async function uploadAvatarFile(
   return { filename };
 }
 
+/** Аватар ребёнка при регистрации: фиксированный ключ `<user_id>/avatar.png`. */
+export async function uploadChildAvatarFile(
+  token: string,
+  filename: string,
+  file: File,
+): Promise<AvatarUploadResult> {
+  const key = filename.trim();
+  if (!key) {
+    throw new Error('Не указан путь к файлу');
+  }
+  const { uploadUrl } = await fetchAvatarUploadUrl(token, key);
+  await putFileToSignedUrl(uploadUrl, file);
+  return { filename: key };
+}
+
 /** Подписанный URL для <img> или дефолтная картинка. */
 export async function resolveAvatarSrc(
   token: string | null,

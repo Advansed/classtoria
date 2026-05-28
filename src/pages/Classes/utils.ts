@@ -182,11 +182,8 @@ export const parseClassMember = (row: unknown): ClassMember | null => {
   }
   const o = row as Record<string, unknown>;
   const id = o.id ?? o.user_id ?? o.userId;
-  const name = o.name;
+  const name = readPersonName(o);
   if (id == null || id === '') {
-    return null;
-  }
-  if (typeof name !== 'string' || !name.trim()) {
     return null;
   }
 
@@ -196,13 +193,21 @@ export const parseClassMember = (row: unknown): ClassMember | null => {
     authorizedRaw === 1 ||
     authorizedRaw === '1' ||
     authorizedRaw === 'true';
+  const checkedRaw = o.checked ?? o.is_checked ?? o.isChecked;
+  const checked =
+    checkedRaw == null ||
+    checkedRaw === true ||
+    checkedRaw === 1 ||
+    checkedRaw === '1' ||
+    checkedRaw === 'true';
 
   return {
     id: String(id),
-    name: name.trim(),
+    name,
     role: readStr(o.role),
     phone: readStr(o.phone ?? o.phone_number ?? o.phoneNumber),
     authorized,
+    checked,
   };
 };
 
@@ -248,6 +253,13 @@ export const filterParents = (members: ClassMember[]): ClassMember[] =>
 export const filterStudents = (members: ClassMember[]): ClassMember[] =>
   members.filter((m) => isStudentRole(m.role));
 
+export const splitMembersByChecked = (
+  members: ClassMember[],
+): { confirmed: ClassMember[]; pending: ClassMember[] } => ({
+  confirmed: members.filter((member) => member.checked),
+  pending: members.filter((member) => !member.checked),
+});
+
 const readNum = (value: unknown): number => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -280,8 +292,39 @@ export const parseClassStats = (raw: unknown): ClassStats => {
 };
 
 const looksLikePhone = (value: string): boolean => {
-  const digits = value.replace(/\D/g, '');
-  return digits.length >= 10;
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length < 10) {
+    return false;
+  }
+  const nonPhoneChars = trimmed.replace(/[\d\s()+\-.]/g, '');
+  return nonPhoneChars.length === 0;
+};
+
+const readPersonName = (o: Record<string, unknown>): string => {
+  const direct = readStr(o.name ?? o.fio ?? o.full_name ?? o.fullName);
+  if (direct) {
+    return direct;
+  }
+  const first = readStr(o.first_name ?? o.firstName);
+  const last = readStr(o.last_name ?? o.lastName);
+  if (first || last) {
+    return `${last} ${first}`.trim();
+  }
+  return '';
+};
+
+const pickDisplayName = (...candidates: string[]): string => {
+  for (const candidate of candidates) {
+    const trimmed = candidate.trim();
+    if (trimmed && !looksLikePhone(trimmed)) {
+      return trimmed;
+    }
+  }
+  return '';
 };
 
 export const parseClassTeacher = (raw: unknown): ClassTeacher => {
@@ -290,7 +333,7 @@ export const parseClassTeacher = (raw: unknown): ClassTeacher => {
   }
   const o = raw as Record<string, unknown>;
   const id = o.id ?? o.user_id ?? o.userId;
-  let name = readStr(o.name);
+  let name = readPersonName(o);
   let phone = readStr(o.phone ?? o.phone_number ?? o.phoneNumber);
 
   if (!phone && looksLikePhone(name)) {
@@ -322,20 +365,23 @@ export const resolveWhitelistTeacher = (
   authorized: boolean;
 } => {
   const headId = classTeacher?.id?.trim();
-  let member: ClassMember | undefined = teacherMembers[0];
-  if (!member && headId && members) {
+  let member: ClassMember | undefined;
+  if (headId && members?.length) {
     member = members.find((m) => m.id === headId);
   }
+  if (!member && teacherMembers.length) {
+    member = teacherMembers[0];
+  }
 
-  let name = member?.name?.trim() || classTeacher?.name?.trim() || '';
-  let phone = member?.phone?.trim() || classTeacher?.phone?.trim() || '';
-
-  /* Не показывать номер как ФИО: если в name только телефон — оставить одну строку с номером. */
-  if (looksLikePhone(name)) {
-    if (!phone) {
-      phone = name;
+  const name = pickDisplayName(classTeacher?.name ?? '', member?.name ?? '');
+  let phone = classTeacher?.phone?.trim() || member?.phone?.trim() || '';
+  if (!phone) {
+    const phoneFromName = [classTeacher?.name, member?.name].find(
+      (value) => value && looksLikePhone(value),
+    );
+    if (phoneFromName) {
+      phone = phoneFromName.trim();
     }
-    name = '';
   }
 
   const inWhitelist = Boolean(
@@ -391,9 +437,13 @@ export const parseClassDetail = (
     return null;
   }
 
-  const members = parseJsonArray(o.members)
+  console.log(o.members);
+
+  const members:any = parseJsonArray(o.members)
     .map(parseClassMember)
     .filter((item): item is ClassMember => item !== null);
+
+  console.log(members);
 
   const events = parseJsonArray(o.events)
     .map(parseClassEvent)

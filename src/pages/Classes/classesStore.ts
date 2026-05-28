@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import {
   addCollection as addCollectionApi,
+  deleteMember as deleteMemberApi,
   addEvent as addEventApi,
   addMember as addMemberApi,
+  setMember as setMemberApi,
   getClass,
 } from './classesApi';
 import type { ClassDetail, GetClassParams, OpenClassParams } from './types';
@@ -43,8 +45,22 @@ type ClassesState = {
   updateMember:           (
     classId: string,
     memberId: string,
-    patch: Partial<Pick<ClassMember, 'name' | 'phone' | 'authorized'>>,
+    patch: Partial<Pick<ClassMember, 'name' | 'phone' | 'authorized' | 'checked'>>,
   ) => void;
+  confirmMember:          (params: {
+    token: string;
+    classId: string;
+    userId: string;
+    schoolId?: string;
+    name?: string;
+  }) => Promise<{ success: boolean; message: string | null }>;
+  deleteMember:           (params: {
+    token: string;
+    classId: string;
+    userId: string;
+    schoolId?: string;
+    name?: string;
+  }) => Promise<{ success: boolean; message: string | null }>;
   addMember:              (params: {
     token: string;
     classId: string;
@@ -110,6 +126,38 @@ export const useClassesStore = create<ClassesState>((set, get) => ({
         };
       }),
     })),
+
+  confirmMember:          async ({ token, classId, userId, schoolId, name }) => {
+    const res = await setMemberApi({ token, classId, id: userId });
+    if (!res.success) {
+      return {
+        success: false,
+        message: res.message ?? 'Не удалось подтвердить участника',
+      };
+    }
+
+    await get().loadClass({ token, classId, schoolId, name });
+    return {
+      success: true,
+      message: res.message ?? 'Участник подтверждён',
+    };
+  },
+
+  deleteMember:           async ({ token, classId, userId, schoolId, name }) => {
+    const res = await deleteMemberApi({ token, classId, id: userId });
+    if (!res.success) {
+      return {
+        success: false,
+        message: res.message ?? 'Не удалось удалить участника',
+      };
+    }
+
+    await get().loadClass({ token, classId, schoolId, name });
+    return {
+      success: true,
+      message: res.message ?? 'Участник удалён',
+    };
+  },
 
   upsertClass:            (detail) =>
     set((s) => ({
