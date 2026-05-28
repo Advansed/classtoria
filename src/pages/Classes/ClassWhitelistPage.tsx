@@ -28,11 +28,13 @@ import { useClassesStore } from './classesStore';
 import { CLASSES_CABINET } from './routes';
 import type { ClassMember, ClassRouteState } from './types';
 import {
-  filterParents,
-  filterStudents,
+  displayMemberName,
+  filterWhitelistMembers,
   filterTeachers,
   formatPhoneDisplay,
   isClassAdminRole,
+  isStudentRole,
+  isTeacherRole,
   resolveWhitelistTeacher,
   splitMembersByChecked,
 } from './utils';
@@ -166,7 +168,7 @@ const MemberRow: React.FC<MemberRowProps> = ({
               aria-label={nameLabel}
             />
           ) : (
-            <span className="class-members-list__text">{member.name}</span>
+            <span className="class-members-list__text">{displayMemberName(member.name)}</span>
           )}
         </div>
         <div className="class-members-list__cell class-members-list__cell--phone">
@@ -233,7 +235,7 @@ const MemberRow: React.FC<MemberRowProps> = ({
               <button
                 type="button"
                 className="class-members-list__row-btn"
-                aria-label={`Редактировать ${member.name}`}
+                aria-label={`Редактировать ${displayMemberName(member.name).trim() || formatPhoneDisplay(member.phone) || 'участника'}`}
                 onClick={() => onStartEdit(member)}
                 disabled={isDeleting}
               >
@@ -420,8 +422,21 @@ const ClassWhitelistPage: React.FC = () => {
   );
   console.log(classDetail);
   const members = classDetail?.members;
-  const students = useMemo(() => filterStudents(members ?? []), [members]);
-  const parents = useMemo(() => filterParents(members ?? []), [members]);
+  const whitelistMembers = useMemo(
+    () => filterWhitelistMembers(members ?? []),
+    [members],
+  );
+  const students = useMemo(
+    () => whitelistMembers.filter((m) => isStudentRole(m.role)),
+    [whitelistMembers],
+  );
+  const parents = useMemo(
+    () =>
+      whitelistMembers.filter(
+        (m) => !isStudentRole(m.role) && !isTeacherRole(m.role),
+      ),
+    [whitelistMembers],
+  );
   const teacherMembers = useMemo(() => filterTeachers(members ?? []), [members]);
   const updateMember = useClassesStore((s) => s.updateMember);
   const confirmMember = useClassesStore((s) => s.confirmMember);
@@ -511,7 +526,7 @@ const ClassWhitelistPage: React.FC = () => {
           return;
         }
         setEditingId(member.id);
-        setDraftName(member.name);
+        setDraftName(member.name.trim());
         setDraftPhone(formatPhoneDisplay(member.phone) || member.phone);
       },
       onCancelEdit: () => {
@@ -523,12 +538,8 @@ const ClassWhitelistPage: React.FC = () => {
         if (!classId) {
           return;
         }
-        const name = draftName.trim();
-        if (!name) {
-          return;
-        }
         updateMember(classId, memberId, {
-          name,
+          name: draftName.trim(),
           phone: draftPhone.trim(),
         });
         setEditingId(null);
