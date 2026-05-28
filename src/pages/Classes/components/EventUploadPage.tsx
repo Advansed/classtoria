@@ -255,6 +255,7 @@ const EventUploadPage: React.FC = () => {
                   <div className="event-upload__field">
                     <p className="event-upload__label">Дата</p>
                     <div className="event-upload__date-wrap event-upload__date-wrap--readonly">
+                      
                       <Calendar
                         size={FIELD_ICON_SIZE}
                         className="event-upload__field-icon"
@@ -263,6 +264,7 @@ const EventUploadPage: React.FC = () => {
                       <span className="event-upload__date-readonly">
                         {eventDateDisplay || '—'}
                       </span>
+                      
                       <Calendar
                         size={FIELD_ICON_SIZE}
                         className="event-upload__field-icon event-upload__field-icon--accent"
