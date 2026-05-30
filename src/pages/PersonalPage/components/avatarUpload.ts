@@ -205,7 +205,7 @@ export async function uploadAvatarFile(
   return { filename };
 }
 
-/** Аватар ребёнка при регистрации: фиксированный ключ `<user_id>/avatar.png`. */
+/** Аватар ребёнка при регистрации: ключ из `childImageKey` (поле `image` в Childrens). */
 export async function uploadChildAvatarFile(
   token: string,
   filename: string,

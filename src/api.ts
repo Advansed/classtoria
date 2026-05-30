@@ -65,6 +65,9 @@ export interface ApiResponse<T = unknown> {
     image?: string;
     role?: string;
   };
+  /** Список детей родителя (таблица Childrens), приходит с login. */
+  childrens?: unknown;
+  children?: unknown;
 }
 
 export async function get<T = unknown>(

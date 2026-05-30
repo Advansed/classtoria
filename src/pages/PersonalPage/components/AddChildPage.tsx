@@ -5,9 +5,10 @@ import { useHistory } from 'react-router-dom';
 import { getDadataToken } from '../../../config/dadata';
 import { useAvatarDisplayUrl } from '../../../hooks/useAvatarDisplayUrl';
 import { useToast } from '../../../hooks/useToast';
+import { normalizePhoneDigits } from '../../../authCookies';
 import { useStore, type UserClass } from '../../../Store';
 import type { DaDataFioSuggestion } from 'react-dadata';
-import { addChild, childAvatarFilename, generateChildUserId } from '../addChildApi';
+import { addChild, childImageKey } from '../addChildApi';
 import { uploadChildAvatarFile } from './avatarUpload';
 import AddChildFioField from './AddChildFioField';
 import '../../Classes/components/EventUploadPage.css';
@@ -41,7 +42,12 @@ const resolveChildName = (
   return manualName.trim();
 };
 
-const AddChildPage: React.FC = () => {
+type AddChildPageProps = {
+  /** На главной без детей — без кнопки «назад», после сохранения остаёмся на home. */
+  mode?: 'standalone' | 'home';
+};
+
+const AddChildPage: React.FC<AddChildPageProps> = ({ mode = 'standalone' }) => {
   const history = useHistory();
   const toast = useToast();
   const avatarSrc = useAvatarDisplayUrl();
@@ -50,6 +56,8 @@ const AddChildPage: React.FC = () => {
   const parentId = useStore((s) => s.user_id);
   const classes = useStore((s) => s.classes);
   const loadClasses = useStore((s) => s.loadClasses);
+  const applyChildAdded = useStore((s) => s.applyChildAdded);
+  const isHomeMode = mode === 'home';
 
   const [classesLoading, setClassesLoading] = useState(false);
   const [classListOpen, setClassListOpen] = useState(false);
@@ -59,8 +67,6 @@ const AddChildPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [childUserId, setChildUserId] = useState<string | null>(null);
-  const [childImagePath, setChildImagePath] = useState<string | null>(null);
   const [childPhotoFile, setChildPhotoFile] = useState<File | null>(null);
   const [childPhotoPreview, setChildPhotoPreview] = useState<string | null>(null);
   const classPickerRef = useRef<HTMLDivElement>(null);
@@ -125,6 +131,10 @@ const AddChildPage: React.FC = () => {
   );
 
   const handleBack = () => {
+    if (isHomeMode) {
+      history.push('/personal/profile');
+      return;
+    }
     if (history.length > 1) {
       history.goBack();
       return;
@@ -156,11 +166,6 @@ const AddChildPage: React.FC = () => {
       return;
     }
 
-    const userId = childUserId ?? generateChildUserId();
-    const imagePath = childAvatarFilename(userId);
-
-    setChildUserId(userId);
-    setChildImagePath(imagePath);
     setChildPhotoFile(file);
     setChildPhotoPreview((prev) => {
       if (prev) {
@@ -197,8 +202,7 @@ const AddChildPage: React.FC = () => {
       return;
     }
 
-    const userId = childUserId ?? generateChildUserId();
-    const imagePath = childImagePath ?? childAvatarFilename(userId);
+    const imagePath = childImageKey(selectedClass.id, trimmedParentId, phone);
 
     setSubmitting(true);
     try {
@@ -206,15 +210,23 @@ const AddChildPage: React.FC = () => {
         token: trimmedToken,
         classId: selectedClass.id,
         parentId: trimmedParentId,
-        userId,
         name,
         phone,
+        image: childPhotoFile ? imagePath : undefined,
       });
 
       if (!res.success) {
         toast.error(res.message?.trim() || 'Не удалось зарегистрировать ребёнка');
         return;
       }
+
+      applyChildAdded(res, {
+        class_id: selectedClass.id,
+        parent_id: trimmedParentId,
+        phone: normalizePhoneDigits(phone),
+        name,
+        image: childPhotoFile ? imagePath : '',
+      });
 
       if (childPhotoFile) {
         try {
@@ -223,13 +235,17 @@ const AddChildPage: React.FC = () => {
           const msg =
             uploadErr instanceof Error ? uploadErr.message : 'Не удалось загрузить фото';
           toast.warning(`Ребёнок добавлен, но фото не загружено: ${msg}`);
-          history.push('/personal/home');
+          if (!isHomeMode) {
+            history.push('/personal/home');
+          }
           return;
         }
       }
 
       toast.success(res.message?.trim() || 'Ребёнок добавлен');
-      history.push('/personal/home');
+      if (!isHomeMode) {
+        history.push('/personal/home');
+      }
     } catch {
       toast.error('Ошибка сети');
     } finally {
@@ -242,9 +258,13 @@ const AddChildPage: React.FC = () => {
       <IonContent fullscreen className="add-child">
         <div className="add-child__scroll">
           <div className="add-child__topbar">
-            <button type="button" className="add-child__back" onClick={handleBack} aria-label="Назад">
-              <ChevronLeft size={26} strokeWidth={2} aria-hidden />
-            </button>
+            {!isHomeMode ? (
+              <button type="button" className="add-child__back" onClick={handleBack} aria-label="Назад">
+                <ChevronLeft size={26} strokeWidth={2} aria-hidden />
+              </button>
+            ) : (
+              <span className="add-child__topbar-spacer" aria-hidden />
+            )}
             <button
               type="button"
               className="add-child__user-btn"
@@ -421,9 +441,7 @@ const AddChildPage: React.FC = () => {
               <span className="add-child__photo-title">
                 {childPhotoPreview ? 'Изменить фото' : 'Добавить фото'}
               </span>
-              <span className="add-child__photo-meta">
-                {childImagePath ? childImagePath : 'JPG, PNG до 5 MB'}
-              </span>
+              <span className="add-child__photo-meta">JPG, PNG до 5 MB</span>
             </button>
 
             <div className="add-child__notice" role="status">

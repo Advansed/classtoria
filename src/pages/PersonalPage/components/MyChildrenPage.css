@@ -1,0 +1,358 @@
+.my-children {
+  --background: #f2f2f2;
+}
+
+.my-children__scroll {
+  padding: 14px 12px 12px;
+  box-sizing: border-box;
+}
+
+.my-children__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.my-children__title {
+  margin: 0 0 4px;
+  font-size: 21px;
+  font-weight: 800;
+  color: #1f2a4b;
+  letter-spacing: -0.02em;
+  line-height: 1.06;
+}
+
+.my-children__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #71767e;
+  line-height: 1.42;
+  max-width: 220px;
+}
+
+.my-children__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.my-children__notify {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #4e5c86;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.my-children__notify-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #e53935;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.my-children__profile-btn {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.my-children__avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.my-children__parent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px 0 10px;
+  border: none;
+  border-radius: 999px;
+  background: #f5c518;
+  color: #1f2a4b;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.my-children__picker {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.my-children__picker-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e7e6e5;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  color: #1f2a4b;
+  text-align: left;
+}
+
+.my-children__picker-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.my-children__picker-label {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.my-children__picker-meta {
+  font-size: 12px;
+  color: #71767e;
+}
+
+.my-children__picker-chevron {
+  flex-shrink: 0;
+  color: #9a9590;
+  transition: transform 0.15s ease;
+}
+
+.my-children__picker--open .my-children__picker-chevron {
+  transform: rotate(180deg);
+}
+
+.my-children__picker-list {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid #e7e6e5;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.my-children__picker-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  color: #1f2a4b;
+}
+
+.my-children__picker-item--selected,
+.my-children__picker-item:hover {
+  background: #f5f0eb;
+}
+
+.my-children__picker-item-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.my-children__picker-item-meta {
+  font-size: 12px;
+  color: #71767e;
+}
+
+.my-children__picker-add {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #e86a24;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.my-children__profile-card {
+  background: #fff;
+  border: 1px solid #e7e6e5;
+  border-radius: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.my-children__profile-photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.my-children__profile-name {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #1f2a4b;
+}
+
+.my-children__profile-meta {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #71767e;
+}
+
+.my-children__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #f0eeec;
+}
+
+.my-children__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #4e5c86;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.my-children__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.my-children__tab {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 8px;
+  border: none;
+  border-radius: 12px;
+  background: #fff;
+  color: #71767e;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.my-children__tab--active {
+  background: #e86a24;
+  color: #fff;
+}
+
+.my-children__events {
+  background: #fff;
+  border: 1px solid #e7e6e5;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.my-children__year-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.my-children__year-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1f2a4b;
+}
+
+.my-children__year-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.my-children__badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.my-children__badge--green {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.my-children__events-empty {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #71767e;
+  line-height: 1.45;
+}
+
+.my-children__events-cta {
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 14px;
+  background: #e86a24;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  opacity: 0.55;
+}
+
+.my-children__placeholder {
+  margin: 0;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e7e6e5;
+  font-size: 13px;
+  color: #71767e;
+  line-height: 1.45;
+}
+
+.my-children__bottom-spacer {
+  height: 24px;
+}

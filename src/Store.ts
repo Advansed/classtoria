@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { getClasses } from './pages/Classes/classesApi';
+import type { ChildRecord } from './pages/PersonalPage/childrenTypes';
+import { parseChildrenFromApi, upsertChild } from './pages/PersonalPage/childrenUtils';
 import {
   DEFAULT_PROFILE_IMAGE,
   normalizeStoredImageKey,
@@ -65,6 +67,7 @@ type AppState = {
   profile:                Profile | null;
   schools:                UserSchool[];
   classes:                UserClass[];
+  childrens:              ChildRecord[];
   setAuth:                (value: boolean) => void;
   setUserId:              (value: string) => void;
   setToken:               (value: string | null) => void;
@@ -72,8 +75,16 @@ type AppState = {
   updateProfile:          (patch: Partial<Profile>) => void;
   setSchools:             (schools: UserSchool[]) => void;
   setClasses:             (classes: UserClass[]) => void;
+  setChildren:            (childrens: ChildRecord[]) => void;
+  /** Обновить список из поля `childrens` в ответе API (login, add_child, …). */
+  applyChildrenFromApi:   (res: { childrens?: unknown; children?: unknown; data?: unknown }) => void;
+  /** После add_child: childrens из ответа или локальное добавление записи. */
+  applyChildAdded:        (
+    res: { childrens?: unknown; children?: unknown; data?: unknown },
+    child: ChildRecord,
+  ) => void;
   loadClasses:            () => Promise<void>;
-  applyLogin:             (session: LoginSession) => void;
+  applyLogin:             (session: LoginSession, childrens?: ChildRecord[]) => void;
   reset:                  () => void;
 };
 
@@ -100,6 +111,7 @@ export const useStore = create<AppState>((set, get) => ({
   profile:                null,
   schools:                [],
   classes:                [],
+  childrens:              [],
 
   setAuth:                (value) => set({ auth: value }),
 
@@ -118,6 +130,21 @@ export const useStore = create<AppState>((set, get) => ({
 
   setClasses:             (classes) => set({ classes }),
 
+  setChildren:            (childrens) => set({ childrens }),
+
+  applyChildrenFromApi:   (res) => {
+    set({ childrens: parseChildrenFromApi(res) });
+  },
+
+  applyChildAdded:        (res, child) => {
+    const parsed = parseChildrenFromApi(res);
+    if (parsed.length > 0) {
+      set({ childrens: parsed });
+      return;
+    }
+    set((s) => ({ childrens: upsertChild(s.childrens, child) }));
+  },
+
   loadClasses:            async () => {
     const token = get().token;
     if (!token?.trim()) {
@@ -132,7 +159,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  applyLogin:             ({ token, user_id, user }) => {
+  applyLogin:             ({ token, user_id, user }, childrens = []) => {
     const trimmedToken = token.trim();
     set({
       auth: true,
@@ -141,6 +168,7 @@ export const useStore = create<AppState>((set, get) => ({
       profile: userToProfile(user),
       schools: [],
       classes: [],
+      childrens,
     });
     void get().loadClasses();
   },
@@ -153,5 +181,6 @@ export const useStore = create<AppState>((set, get) => ({
       profile: null,
       schools: [],
       classes: [],
+      childrens: [],
     }),
 }));

@@ -11,6 +11,7 @@ import {
   setLoggedInCookie,
 } from '../../authCookies';
 import { useToast } from '../../hooks/useToast';
+import { parseChildrenFromApi } from '../PersonalPage/childrenUtils';
 import { useStore, type AuthUser } from '../../Store';
 import {
   socketAcquire,
@@ -42,11 +43,16 @@ const applyLoginToStore = (res: ApiResponse<unknown>) => {
     return;
   }
 
-  useStore.getState().applyLogin({
-    token,
-    user_id: res.user_id ?? '',
-    user: readAuthUser(res.user),
-  });
+  const childrens = parseChildrenFromApi(res);
+
+  useStore.getState().applyLogin(
+    {
+      token,
+      user_id: res.user_id ?? '',
+      user: readAuthUser(res.user),
+    },
+    childrens,
+  );
 };
 
 /** Бот MAX для подтверждения входа (handle @id143502923920_bot). */
@@ -422,6 +428,8 @@ export const useAuthPage = () => {
         password: passwordHash,
       });
 
+      console.log('loginResponse', loginResponse);
+
       if (!loginResponse.success) {
         toast.error(loginResponse.message ?? 'Не удалось авторизоваться');
         return;
@@ -479,6 +487,8 @@ export const useAuthPage = () => {
         phone,
         password: stored.passwordHash,
       });
+      
+      console.log('response', response);
 
       if (!response.success) {
         clearAuthCookies();

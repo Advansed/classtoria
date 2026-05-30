@@ -7,6 +7,11 @@
   box-sizing: border-box;
 }
 
+.add-child__topbar-spacer {
+  width: 42px;
+  flex-shrink: 0;
+}
+
 .add-child__topbar {
   display: flex;
   align-items: center;

@@ -5,30 +5,28 @@ export type AddChildParams = {
   token: string;
   classId: string;
   parentId: string;
-  userId: string;
   name: string;
   phone: string;
+  /** Ключ файла в хранилище (поле `image` в Childrens). */
+  image?: string;
 };
 
-export function generateChildUserId(): string {
-  return crypto.randomUUID();
+/** Ключ аватара ребёнка в хранилище по составному ключу Childrens. */
+export function childImageKey(classId: string, parentId: string, phone: string): string {
+  const digits = normalizePhoneDigits(phone);
+  return `children/${parentId.trim()}/${classId.trim()}/${digits}/avatar.png`;
 }
 
-/** Ключ в хранилище: `<user_id>/avatar.png`. */
-export function childAvatarFilename(userId: string): string {
-  return `${userId.trim()}/avatar.png`;
-}
-
-/** `post('add_child', { token, class_id, parent_id, user_id, name, phone })`. */
+/** `post('add_child', { token, class_id, parent_id, phone, name, image? })` → таблица Childrens. */
 export async function addChild(params: AddChildParams): Promise<ApiResponse<unknown>> {
   const trimmedToken = params.token.trim();
   const classId = params.classId.trim();
   const parentId = params.parentId.trim();
-  const userId = params.userId.trim();
   const name = params.name.trim();
   const phone = normalizePhoneDigits(params.phone);
+  const image = params.image?.trim() ?? '';
 
-  if (!trimmedToken || !classId || !parentId || !userId || !name || !phone) {
+  if (!trimmedToken || !classId || !parentId || !name || !phone) {
     return {
       success: false,
       data: null,
@@ -40,8 +38,8 @@ export async function addChild(params: AddChildParams): Promise<ApiResponse<unkn
     token: trimmedToken,
     class_id: classId,
     parent_id: parentId,
-    user_id: userId,
-    name,
     phone,
+    name,
+    ...(image ? { image } : {}),
   });
 }
