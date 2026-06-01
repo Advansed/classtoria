@@ -156,6 +156,8 @@ export const parseClassEvent = (row: unknown): ClassEvent | null => {
 
   const idRaw = o.id ?? o.event_id ?? o.eventId;
   const id = idRaw != null ? String(idRaw).trim() : '';
+  const creatorRaw = o.creator ?? o.creator_id ?? o.creatorId ?? o.user_id ?? o.userId;
+  const creator = creatorRaw != null ? String(creatorRaw).trim() : '';
 
   const dateRaw =
     o.period ?? o.date ?? o.event_date ?? o.eventDate ?? o.datetime ?? o.created_at ?? o.createdAt;
@@ -167,6 +169,7 @@ export const parseClassEvent = (row: unknown): ClassEvent | null => {
 
   return {
     ...(id ? { id } : {}),
+    ...(creator ? { creator } : {}),
     title,
     date,
     ...(description ? { description } : {}),

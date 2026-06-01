@@ -10,7 +10,7 @@ import {
   IonToolbar,
 } from '@ionic/react';
 import { FolderPlus, Images } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useToast } from '../../../hooks/useToast';
 import { useStore } from '../../../Store';
@@ -27,6 +27,7 @@ const CreateCollectionPage: React.FC = () => {
   const toast = useToast();
   const state = location.state ?? {};
   const token = useStore((s) => s.token);
+  const userId = useStore((s) => s.user_id);
 
   const addCollection = useClassesStore((s) => s.addCollection);
 
@@ -40,6 +41,21 @@ const CreateCollectionPage: React.FC = () => {
 
   const classDetail = useClassesStore((s) => (classId ? s.getClassById(classId) : undefined));
   const displayClassName = classDetail?.name || classNameFromRoute || '—';
+  const event = useMemo(() => {
+    const events = classDetail?.events ?? [];
+    if (eventId) {
+      const byId = events.find((ev) => ev.id === eventId);
+      if (byId) {
+        return byId;
+      }
+    }
+    const normalizedTitle = eventTitle.trim();
+    if (!normalizedTitle) {
+      return undefined;
+    }
+    return events.find((ev) => ev.title.trim() === normalizedTitle);
+  }, [classDetail?.events, eventId, eventTitle]);
+  const canEdit = Boolean(event?.creator?.trim() && event.creator.trim() === userId.trim());
 
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +72,10 @@ const CreateCollectionPage: React.FC = () => {
   };
 
   const save = async () => {
+    if (!canEdit) {
+      toast.warning('Редактировать можно только своё событие');
+      return;
+    }
     if (!classId || !token?.trim()) {
       toast.error('Не выбран класс');
       return;
@@ -154,7 +174,7 @@ const CreateCollectionPage: React.FC = () => {
             <button
               type="button"
               className="event-upload__collection-btn"
-              disabled={submitting || !classId || !eventId}
+              disabled={!canEdit || submitting || !classId || !eventId}
               onClick={() => void save()}
             >
               {submitting ? <IonSpinner name="crescent" /> : 'Создать коллекцию'}

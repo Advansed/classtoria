@@ -101,6 +101,7 @@ const EventViewPage: React.FC = () => {
   const toast = useToast();
   const state = location.state ?? {};
   const token = useStore((s) => s.token);
+  const userId = useStore((s) => s.user_id);
 
   const activeClassId = useClassesStore((s) => s.activeClassId);
   const classId = state.classId?.trim() || activeClassId?.trim() || '';
@@ -142,12 +143,17 @@ const EventViewPage: React.FC = () => {
     [classDetail?.teacher, teacherMembers, members],
   );
   const authorFallback = teacherCard.name || '—';
+  const canEdit = Boolean(event?.creator?.trim() && event.creator.trim() === userId.trim());
 
   const photoSessions = event?.collections.length ?? 0;
   const videos = event?.videoCount ?? 0;
   const comments = event?.comments ?? [];
 
   const openUpload = () => {
+    if (!canEdit) {
+      toast.warning('Событие доступно только для просмотра');
+      return;
+    }
     if (!event) {
       return;
     }
@@ -190,6 +196,10 @@ const EventViewPage: React.FC = () => {
   };
 
   const sendComment = () => {
+    if (!canEdit) {
+      toast.warning('Комментарии доступны только владельцу класса');
+      return;
+    }
     const text = commentDraft.trim();
     if (!text) {
       return;
@@ -323,6 +333,7 @@ const EventViewPage: React.FC = () => {
                 type="button"
                 className="event-view__upload-btn"
                 onClick={openUpload}
+                disabled={!canEdit}
               >
                 <Upload size={ICON_SIZE} aria-hidden />
                 Загрузить материалы события
@@ -375,15 +386,16 @@ const EventViewPage: React.FC = () => {
                     <input
                       type="text"
                       className="event-view__comment-input"
-                      placeholder="Написать комментарий"
+                      placeholder={canEdit ? 'Написать комментарий' : 'Только просмотр'}
                       value={commentDraft}
                       onChange={(e) => setCommentDraft(e.target.value)}
                       aria-label="Написать комментарий"
+                      readOnly={!canEdit}
                     />
                     <button
                       type="submit"
                       className="event-view__comment-send"
-                      disabled={!commentDraft.trim()}
+                      disabled={!canEdit || !commentDraft.trim()}
                       aria-label="Отправить"
                     >
                       <Send size={18} aria-hidden />

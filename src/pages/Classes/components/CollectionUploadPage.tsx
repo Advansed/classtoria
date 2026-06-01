@@ -126,6 +126,7 @@ const CollectionUploadPage: React.FC = () => {
   const toast = useToast();
   const state = location.state ?? {};
   const token = useStore((s) => s.token);
+  const userId = useStore((s) => s.user_id);
 
   const activeClassId = useClassesStore((s) => s.activeClassId);
   const loadClass = useClassesStore((s) => s.loadClass);
@@ -143,6 +144,7 @@ const CollectionUploadPage: React.FC = () => {
     () => findEvent(classDetail?.events ?? [], eventId, eventTitle),
     [classDetail?.events, eventId, eventTitle],
   );
+  const canEditEvent = Boolean(event?.creator?.trim() && event.creator.trim() === userId.trim());
   const collections = event?.collections ?? [];
 
   const [selectedCollectionKey, setSelectedCollectionKey] = useState('');
@@ -292,6 +294,10 @@ const CollectionUploadPage: React.FC = () => {
   }, [classId, classNameFromRoute, loadClass, schoolId, token]);
 
   const openCreateCollection = () => {
+    if (!canEditEvent) {
+      toast.warning('Редактировать можно только своё событие');
+      return;
+    }
     if (!eventId) {
       toast.error('Нет id события — вернитесь и выберите событие снова');
       return;
@@ -398,6 +404,10 @@ const CollectionUploadPage: React.FC = () => {
   };
 
   const onFilesSelected = async (fileList: FileList | null) => {
+    if (!canEditEvent) {
+      toast.warning('Событие открыто только для просмотра');
+      return;
+    }
     if (!fileList?.length) {
       return;
     }
@@ -456,6 +466,10 @@ const CollectionUploadPage: React.FC = () => {
 
   const deleteExistingImage = async (img: ClassImage, index: number) => {
     const deleteKey = `${selectedCollectionId}-existing-${index}`;
+    if (!canEditEvent) {
+      toast.warning('Удаление доступно только создателю события');
+      return;
+    }
     if (!token?.trim() || processing || deletingKey || !deleteCtx) {
       return;
     }
@@ -492,6 +506,9 @@ const CollectionUploadPage: React.FC = () => {
   };
 
   const removePendingItem = async (localId: string) => {
+    if (!canEditEvent) {
+      return;
+    }
     if (!selectedCollectionId) {
       return;
     }
@@ -533,6 +550,7 @@ const CollectionUploadPage: React.FC = () => {
       eventId &&
       selectedCollection &&
       selectedCollectionId &&
+      canEditEvent &&
       !processing &&
       !deletingKey,
   );
@@ -636,7 +654,7 @@ const CollectionUploadPage: React.FC = () => {
                 <button
                   type="button"
                   className="event-upload__new-event-btn"
-                  disabled={!eventId || processing}
+                  disabled={!canEditEvent || !eventId || processing}
                   onClick={openCreateCollection}
                 >
                   <Plus size={FIELD_ICON_SIZE} aria-hidden />
@@ -712,7 +730,7 @@ const CollectionUploadPage: React.FC = () => {
                           previewRaw={raw}
                           token={token}
                           deleting={isDeleting}
-                          disabled={previewBusy && !isDeleting}
+                          disabled={!canEditEvent || (previewBusy && !isDeleting)}
                           onDelete={() => void deleteExistingImage(img, index)}
                         />
                       );
@@ -738,7 +756,7 @@ const CollectionUploadPage: React.FC = () => {
                             type="button"
                             className="collection-upload__preview-remove"
                             aria-label="Удалить"
-                            disabled={previewBusy}
+                            disabled={!canEditEvent || previewBusy}
                             onClick={() => void removePendingItem(item.localId)}
                           >
                             {deletingKey === item.localId ? (

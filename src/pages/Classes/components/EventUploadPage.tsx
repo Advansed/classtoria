@@ -35,6 +35,7 @@ const EventUploadPage: React.FC = () => {
   const toast               = useToast();
   const state               = location.state ?? {};
   const token = useStore((s) => s.token);
+  const userId = useStore((s) => s.user_id);
 
   const activeClassId       = useClassesStore((s) => s.activeClassId);
   const loadClass           = useClassesStore((s) => s.loadClass);
@@ -98,6 +99,9 @@ const EventUploadPage: React.FC = () => {
   const selectedIndex = parseEventSelectValue(selectedEventKey, events.length);
   const selectedEvent: ClassEvent | null =
     selectedIndex != null ? (events[selectedIndex] ?? null) : null;
+  const canEditSelectedEvent = Boolean(
+    selectedEvent?.creator?.trim() && selectedEvent.creator.trim() === userId.trim(),
+  );
 
   const eventDateDisplay = useMemo(
     () => (selectedEvent ? normalizeEventDate(selectedEvent.date) : ''),
@@ -132,6 +136,10 @@ const EventUploadPage: React.FC = () => {
   };
 
   const openCollections = useCallback(() => {
+    if (!canEditSelectedEvent) {
+      toast.warning('Редактировать можно только своё событие');
+      return;
+    }
     if (!classId || !token?.trim()) {
       toast.error('Не выбран класс');
       return;
@@ -160,7 +168,7 @@ const EventUploadPage: React.FC = () => {
     };
 
     history.push(CLASSES_COLLECTION_UPLOAD, nextState);
-  }, [classId, eventDateDisplay, eventDescriptionDisplay, history, routePayload, selectedEvent, toast, token]);
+  }, [canEditSelectedEvent, classId, eventDateDisplay, eventDescriptionDisplay, history, routePayload, selectedEvent, toast, token]);
 
   return (
     <IonPage>
@@ -290,7 +298,7 @@ const EventUploadPage: React.FC = () => {
             <button
               type="button"
               className="event-upload__collection-btn"
-              disabled={!classId || !selectedEvent}
+              disabled={!canEditSelectedEvent || !classId || !selectedEvent}
               onClick={openCollections}
             >
               <Images size={20} className="event-upload__btn-icon" aria-hidden />

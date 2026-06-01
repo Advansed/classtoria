@@ -39,6 +39,8 @@ export type ClassCollection = {
 /** Событие класса. */
 export type ClassEvent = {
   id?:                    string;
+  /** Идентификатор создателя события (для прав редактирования). */
+  creator?:               string;
   title:                  string;
   /** Дата/период события (в API — `period`, в UI — «Дата»). */
   date:                   string;
