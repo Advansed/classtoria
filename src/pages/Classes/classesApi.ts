@@ -372,6 +372,30 @@ export async function deleteImage(params: DeleteImageParams): Promise<ApiRespons
   return res;
 }
 
+export type AddFavoriteParams = {
+  token: string;
+  imageId: string;
+};
+
+/** `post('add_favorite', { token, image_id })` — добавить фото в избранное. */
+export async function addFavorite(params: AddFavoriteParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const imageId = params.imageId.trim();
+
+  if (!trimmedToken || !imageId) {
+    return {
+      success: false,
+      data: null,
+      message: 'Нет данных для добавления в избранное',
+    };
+  }
+
+  return api('add_favorite', {
+    token: trimmedToken,
+    image_id: imageId,
+  });
+}
+
 /** @deprecated Используйте {@link getClasses}. */
 export const fetchUserClasses = getClasses;
 

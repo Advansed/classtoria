@@ -1,12 +1,11 @@
 import { IonContent, IonPage, IonSpinner } from '@ionic/react';
 import { ChevronLeft, Download, Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { useChildAvatarUrl } from '../../../hooks/useChildAvatarUrl';
 import { useToast } from '../../../hooks/useToast';
 import { useStore } from '../../../Store';
-import type { ChildRecord } from '../../PersonalPage/childrenTypes';
-import { childRecordKey } from '../../PersonalPage/childrenUtils';
+import { addFavorite } from '../classesApi';
+import { imageIsInFavorites } from '../favoritesUtils';
 import { useClassesStore } from '../classesStore';
 import { CLASSES_COLLECTION_VIEW } from '../routes';
 import type { CollectionViewRouteState, ImageViewRouteState } from '../types';
@@ -20,36 +19,14 @@ import { guessImageFilename, saveImageWithDialog } from './imageDownload';
 import { useClassImageSrc } from './useClassImageSrc';
 import './ImageViewPage.css';
 
-type ChildAvatarPickProps = {
-  child: ChildRecord;
-  selected: boolean;
-  onToggle: () => void;
-};
-
-const ChildAvatarPick: React.FC<ChildAvatarPickProps> = ({ child, selected, onToggle }) => {
-  const avatarSrc = useChildAvatarUrl(child.image);
-  const label = child.name.trim() || 'Ребёнок';
-
-  return (
-    <button
-      type="button"
-      className={`image-view__child-avatar${selected ? ' image-view__child-avatar--selected' : ''}`}
-      onClick={onToggle}
-      aria-label={label}
-      aria-pressed={selected}
-    >
-      <img src={avatarSrc} alt="" width={44} height={44} />
-    </button>
-  );
-};
-
 const ImageViewPage: React.FC = () => {
   const history = useHistory();
   const location = useLocation<ImageViewRouteState>();
   const toast = useToast();
   const state = location.state ?? {};
   const token = useStore((s) => s.token);
-  const childrens = useStore((s) => s.childrens);
+  const favorites = useStore((s) => s.favorites);
+  const applyFavoritesFromApi = useStore((s) => s.applyFavoritesFromApi);
 
   const activeClassId = useClassesStore((s) => s.activeClassId);
   const loadClass = useClassesStore((s) => s.loadClass);
@@ -65,10 +42,9 @@ const ImageViewPage: React.FC = () => {
   const imageId = state.imageId?.trim() || '';
   const imageIndex = state.imageIndex;
 
-  const [childPickerOpen, setChildPickerOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [taggedChildKeys, setTaggedChildKeys] = useState<Set<string>>(() => new Set());
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [addingFavorite, setAddingFavorite] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const classDetail = useClassesStore((s) => (classId ? s.getClassById(classId) : undefined));
 
@@ -84,19 +60,6 @@ const ImageViewPage: React.FC = () => {
     });
   }, [classId, schoolId, token, classNameFromRoute, loadClass]);
 
-  useEffect(() => {
-    if (!childPickerOpen) {
-      return;
-    }
-    const onPointerDown = (e: PointerEvent) => {
-      if (!bottomRef.current?.contains(e.target as Node)) {
-        setChildPickerOpen(false);
-      }
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [childPickerOpen]);
-
   const event = useMemo(
     () => findEventInList(classDetail?.events ?? [], eventId, eventIndex),
     [classDetail?.events, eventId, eventIndex],
@@ -109,6 +72,14 @@ const ImageViewPage: React.FC = () => {
     () => findImageInCollection(collection, imageId, imageIndex),
     [collection, imageId, imageIndex],
   );
+
+  const resolvedImageId = image?.imageId?.trim() || imageId;
+
+  useEffect(() => {
+    setIsFavorite(
+      Boolean(image?.featured) || imageIsInFavorites(favorites, resolvedImageId),
+    );
+  }, [image?.featured, favorites, resolvedImageId]);
 
   const photoSrc = useClassImageSrc(token, image ? imageFullRaw(image) : '');
 
@@ -140,26 +111,38 @@ const ImageViewPage: React.FC = () => {
     toast.show('Комментарии к фото скоро будут доступны');
   };
 
-  const toggleChildPicker = () => {
-    if (childrens.length === 0) {
-      toast.warning('Сначала добавьте ребёнка в личном кабинете');
+  const handleAddFavorite = async () => {
+    const trimmedToken = token?.trim() ?? '';
+    if (!trimmedToken) {
+      toast.warning('Войдите в аккаунт');
       return;
     }
-    setChildPickerOpen((open) => !open);
-  };
+    if (!resolvedImageId) {
+      toast.error('Нет image_id — нельзя добавить в избранное');
+      return;
+    }
+    if (isFavorite || addingFavorite) {
+      return;
+    }
 
-  const toggleTaggedChild = (child: ChildRecord) => {
-    const key = childRecordKey(child);
-    setTaggedChildKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
+    setAddingFavorite(true);
+    try {
+      const res = await addFavorite({
+        token: trimmedToken,
+        imageId: resolvedImageId,
+      });
+      if (res.success) {
+        applyFavoritesFromApi(res);
+        setIsFavorite(true);
+        toast.success(res.message?.trim() || 'Добавлено в избранное');
       } else {
-        next.add(key);
+        toast.error(res.message?.trim() || 'Не удалось добавить в избранное');
       }
-      return next;
-    });
-    toast.show('Фото сохранится в личный кабинет ребёнка');
+    } catch {
+      toast.error('Ошибка сети');
+    } finally {
+      setAddingFavorite(false);
+    }
   };
 
   const openMenu = () => {
@@ -172,10 +155,7 @@ const ImageViewPage: React.FC = () => {
     }
     setDownloading(true);
     try {
-      const filename = guessImageFilename(
-        image?.imageId,
-        image ? imageFullRaw(image) : undefined,
-      );
+      const filename = guessImageFilename(resolvedImageId, image ? imageFullRaw(image) : undefined);
       const result = await saveImageWithDialog(photoSrc, filename);
       if (result === 'saved') {
         toast.success('Фото сохранено');
@@ -230,23 +210,7 @@ const ImageViewPage: React.FC = () => {
                 </button>
               </div>
 
-              <div ref={bottomRef} className="image-view__bottom">
-                {childPickerOpen && childrens.length > 0 ? (
-                  <div className="image-view__child-picker" role="listbox" aria-label="Выберите ребёнка">
-                    {childrens.map((child) => {
-                      const key = childRecordKey(child);
-                      return (
-                        <ChildAvatarPick
-                          key={key}
-                          child={child}
-                          selected={taggedChildKeys.has(key)}
-                          onToggle={() => toggleTaggedChild(child)}
-                        />
-                      );
-                    })}
-                  </div>
-                ) : null}
-
+              <div className="image-view__bottom">
                 <div className="image-view__actions">
                   <button
                     type="button"
@@ -268,16 +232,17 @@ const ImageViewPage: React.FC = () => {
                   <button
                     type="button"
                     className={`image-view__action-btn image-view__action-btn--like${
-                      childPickerOpen ? ' image-view__action-btn--like-active' : ''
+                      isFavorite ? ' image-view__action-btn--like-active' : ''
                     }`}
-                    onClick={toggleChildPicker}
-                    aria-label="Отметить ребёнка"
-                    aria-expanded={childPickerOpen}
+                    onClick={() => void handleAddFavorite()}
+                    disabled={addingFavorite || isFavorite || !resolvedImageId}
+                    aria-label={isFavorite ? 'В избранном' : 'В избранное'}
+                    aria-pressed={isFavorite}
                   >
                     <Heart
                       size={24}
                       strokeWidth={1.75}
-                      fill={childPickerOpen ? 'currentColor' : 'none'}
+                      fill={isFavorite ? 'currentColor' : 'none'}
                       aria-hidden
                     />
                   </button>

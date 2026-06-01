@@ -68,6 +68,9 @@ export interface ApiResponse<T = unknown> {
   /** Список детей родителя (таблица Childrens), приходит с login. */
   childrens?: unknown;
   children?: unknown;
+  /** Избранные события (ClassEvent[]), приходит с login. */
+  favorites?: unknown;
+  favorite?: unknown;
 }
 
 export async function get<T = unknown>(

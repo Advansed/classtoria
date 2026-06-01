@@ -11,6 +11,7 @@ import {
   setLoggedInCookie,
 } from '../../authCookies';
 import { useToast } from '../../hooks/useToast';
+import { parseFavoritesFromApi } from '../Classes/favoritesUtils';
 import { parseChildrenFromApi } from '../PersonalPage/childrenUtils';
 import { useStore, type AuthUser } from '../../Store';
 import {
@@ -44,6 +45,7 @@ const applyLoginToStore = (res: ApiResponse<unknown>) => {
   }
 
   const childrens = parseChildrenFromApi(res);
+  const favorites = parseFavoritesFromApi(res);
 
   useStore.getState().applyLogin(
     {
@@ -52,6 +54,7 @@ const applyLoginToStore = (res: ApiResponse<unknown>) => {
       user: readAuthUser(res.user),
     },
     childrens,
+    favorites,
   );
 };
 

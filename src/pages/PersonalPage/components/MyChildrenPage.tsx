@@ -3,6 +3,7 @@ import {
   Bell,
   Calendar,
   ChevronDown,
+  ChevronRight,
   Image,
   Play,
   PlusCircle,
@@ -13,6 +14,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useChildAvatarUrl } from '../../../hooks/useChildAvatarUrl';
 import { useAvatarDisplayUrl } from '../../../hooks/useAvatarDisplayUrl';
+import { useClassImageSrc } from '../../Classes/components/useClassImageSrc';
+import {
+  favoriteEventPhotos,
+  favoriteEventThumbRaw,
+  summarizeFavorites,
+} from '../../Classes/favoritesUtils';
+import { CLASSES_EVENT_VIEW } from '../../Classes/routes';
+import type { ClassEvent } from '../../Classes/types';
 import { useStore, type UserClass } from '../../../Store';
 import type { ChildRecord } from '../childrenTypes';
 import { childRecordKey } from '../childrenUtils';
@@ -31,14 +40,15 @@ const parentInitial = (name: string): string => {
 const resolveClassContext = (
   child: ChildRecord,
   classes: UserClass[],
-): { classLabel: string; schoolLabel: string } => {
+): { classLabel: string; schoolLabel: string; schoolId: string } => {
   const match = classes.find((cls) => cls.id === child.class_id);
   if (!match) {
-    return { classLabel: child.class_id, schoolLabel: '' };
+    return { classLabel: child.class_id, schoolLabel: '', schoolId: '' };
   }
   return {
     classLabel: match.name.trim(),
     schoolLabel: match.schoolName.trim(),
+    schoolId: match.schoolId,
   };
 };
 
@@ -46,12 +56,14 @@ type ChildProfileCardProps = {
   child: ChildRecord;
   classLabel: string;
   schoolLabel: string;
+  stats: { photos: number; videos: number; events: number };
 };
 
 const ChildProfileCard: React.FC<ChildProfileCardProps> = ({
   child,
   classLabel,
   schoolLabel,
+  stats,
 }) => {
   const avatarSrc = useChildAvatarUrl(child.image);
   const meta = [classLabel, schoolLabel].filter(Boolean).join(' · ');
@@ -66,15 +78,15 @@ const ChildProfileCard: React.FC<ChildProfileCardProps> = ({
       <div className="my-children__stats" aria-label="Статистика">
         <div className="my-children__stat">
           <Image size={18} aria-hidden />
-          <span>0</span>
+          <span>{stats.photos}</span>
         </div>
         <div className="my-children__stat">
           <Play size={18} aria-hidden />
-          <span>0</span>
+          <span>{stats.videos}</span>
         </div>
         <div className="my-children__stat">
           <Calendar size={18} aria-hidden />
-          <span>0</span>
+          <span>{stats.events}</span>
         </div>
         <div className="my-children__stat">
           <Trophy size={18} aria-hidden />
@@ -85,11 +97,36 @@ const ChildProfileCard: React.FC<ChildProfileCardProps> = ({
   );
 };
 
+type ChildEventRowProps = {
+  event: ClassEvent;
+  token: string | null;
+  onPress: () => void;
+};
+
+const ChildEventRow: React.FC<ChildEventRowProps> = ({ event, token, onPress }) => {
+  const thumbSrc = useClassImageSrc(token, favoriteEventThumbRaw(event));
+  const photos = favoriteEventPhotos(event);
+
+  return (
+    <button type="button" className="my-children__event-row" onClick={onPress}>
+      <img src={thumbSrc} alt="" className="my-children__event-thumb" loading="lazy" />
+      <div className="my-children__event-body">
+        <p className="my-children__event-title">{event.title}</p>
+        <p className="my-children__event-meta">
+          {[event.date, photos > 0 ? `${photos} фото` : ''].filter(Boolean).join(' · ')}
+        </p>
+      </div>
+      <ChevronRight size={20} className="my-children__event-chevron" aria-hidden />
+    </button>
+  );
+};
+
 const MyChildrenPage: React.FC = () => {
   const history = useHistory();
   const avatarSrc = useAvatarDisplayUrl();
   const profileName = useStore((s) => s.profile?.name ?? '');
   const childrens = useStore((s) => s.childrens);
+  const favorites = useStore((s) => s.favorites);
   const classes = useStore((s) => s.classes);
   const loadClasses = useStore((s) => s.loadClasses);
   const token = useStore((s) => s.token);
@@ -122,9 +159,14 @@ const MyChildrenPage: React.FC = () => {
   );
 
   const classContext = useMemo(
-    () => (selectedChild ? resolveClassContext(selectedChild, classes) : { classLabel: '', schoolLabel: '' }),
+    () =>
+      selectedChild
+        ? resolveClassContext(selectedChild, classes)
+        : { classLabel: '', schoolLabel: '', schoolId: '' },
     [selectedChild, classes],
   );
+
+  const favoriteStats = useMemo(() => summarizeFavorites(favorites), [favorites]);
 
   useEffect(() => {
     if (!pickerOpen) {
@@ -142,6 +184,22 @@ const MyChildrenPage: React.FC = () => {
   const selectChild = (child: ChildRecord) => {
     setSelectedKey(childRecordKey(child));
     setPickerOpen(false);
+  };
+
+  const openFavoriteEvent = (event: ClassEvent, index: number) => {
+    if (!selectedChild) {
+      return;
+    }
+    history.push(CLASSES_EVENT_VIEW, {
+      schoolId: classContext.schoolId,
+      schoolName: classContext.schoolLabel,
+      classId: selectedChild.class_id,
+      className: classContext.classLabel,
+      eventId: event.id,
+      eventIndex: index,
+      eventTitle: event.title,
+      eventDate: event.date,
+    });
   };
 
   return (
@@ -247,6 +305,7 @@ const MyChildrenPage: React.FC = () => {
               child={selectedChild}
               classLabel={classContext.classLabel}
               schoolLabel={classContext.schoolLabel}
+              stats={favoriteStats}
             />
           ) : null}
 
@@ -258,7 +317,7 @@ const MyChildrenPage: React.FC = () => {
               className={`my-children__tab${activeTab === 'events' ? ' my-children__tab--active' : ''}`}
               onClick={() => setActiveTab('events')}
             >
-              События
+              События{favorites.length > 0 ? ` (${favorites.length})` : ''}
             </button>
             <button
               type="button"
@@ -276,7 +335,7 @@ const MyChildrenPage: React.FC = () => {
               className={`my-children__tab${activeTab === 'capsule' ? ' my-children__tab--active' : ''}`}
               onClick={() => setActiveTab('capsule')}
             >
-              Капсула времени
+              Капсула
             </button>
           </div>
 
@@ -288,16 +347,36 @@ const MyChildrenPage: React.FC = () => {
                     ? `2025–2026 · ${classContext.classLabel}`
                     : '2025–2026'}
                 </p>
-                <div className="my-children__year-badges">
-                  <span className="my-children__badge my-children__badge--green">текущий год</span>
-                </div>
+                {favorites.length > 0 ? (
+                  <div className="my-children__year-badges">
+                    <span className="my-children__badge my-children__badge--orange">
+                      {favoriteStats.photos} фото
+                    </span>
+                  </div>
+                ) : (
+                  <div className="my-children__year-badges">
+                    <span className="my-children__badge my-children__badge--green">текущий год</span>
+                  </div>
+                )}
               </div>
-              <p className="my-children__events-empty">
-                События класса появятся здесь после публикации учителем.
-              </p>
-              <button type="button" className="my-children__events-cta" disabled>
-                Смотреть все за {classContext.classLabel || 'класс'}
-              </button>
+
+              {favorites.length === 0 ? (
+                <p className="my-children__events-empty">
+                  Пока нет избранных событий. Отметьте понравившиеся фото в кабинете класса.
+                </p>
+              ) : (
+                <ul className="my-children__event-list">
+                  {favorites.map((event, index) => (
+                    <li key={event.id ?? `${event.title}-${event.date}-${index}`}>
+                      <ChildEventRow
+                        event={event}
+                        token={token}
+                        onPress={() => openFavoriteEvent(event, index)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           ) : (
             <p className="my-children__placeholder">

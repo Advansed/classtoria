@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { getClasses } from './pages/Classes/classesApi';
+import type { ClassEvent } from './pages/Classes/types';
+import { parseFavoritesFromApi } from './pages/Classes/favoritesUtils';
 import type { ChildRecord } from './pages/PersonalPage/childrenTypes';
 import { parseChildrenFromApi, upsertChild } from './pages/PersonalPage/childrenUtils';
 import {
@@ -68,6 +70,8 @@ type AppState = {
   schools:                UserSchool[];
   classes:                UserClass[];
   childrens:              ChildRecord[];
+  /** Избранные события (та же структура, что ClassEvent), приходит с login. */
+  favorites:              ClassEvent[];
   setAuth:                (value: boolean) => void;
   setUserId:              (value: string) => void;
   setToken:               (value: string | null) => void;
@@ -76,15 +80,22 @@ type AppState = {
   setSchools:             (schools: UserSchool[]) => void;
   setClasses:             (classes: UserClass[]) => void;
   setChildren:            (childrens: ChildRecord[]) => void;
+  setFavorites:           (favorites: ClassEvent[]) => void;
   /** Обновить список из поля `childrens` в ответе API (login, add_child, …). */
   applyChildrenFromApi:   (res: { childrens?: unknown; children?: unknown; data?: unknown }) => void;
+  /** Обновить избранное из поля `favorites` в ответе API (login, add_favorite, …). */
+  applyFavoritesFromApi:  (res: { favorites?: unknown; favorite?: unknown; data?: unknown }) => void;
   /** После add_child: childrens из ответа или локальное добавление записи. */
   applyChildAdded:        (
     res: { childrens?: unknown; children?: unknown; data?: unknown },
     child: ChildRecord,
   ) => void;
   loadClasses:            () => Promise<void>;
-  applyLogin:             (session: LoginSession, childrens?: ChildRecord[]) => void;
+  applyLogin:             (
+    session: LoginSession,
+    childrens?: ChildRecord[],
+    favorites?: ClassEvent[],
+  ) => void;
   reset:                  () => void;
 };
 
@@ -112,6 +123,7 @@ export const useStore = create<AppState>((set, get) => ({
   schools:                [],
   classes:                [],
   childrens:              [],
+  favorites:              [],
 
   setAuth:                (value) => set({ auth: value }),
 
@@ -145,6 +157,12 @@ export const useStore = create<AppState>((set, get) => ({
     set((s) => ({ childrens: upsertChild(s.childrens, child) }));
   },
 
+  setFavorites:           (favorites) => set({ favorites }),
+
+  applyFavoritesFromApi:  (res) => {
+    set({ favorites: parseFavoritesFromApi(res) });
+  },
+
   loadClasses:            async () => {
     const token = get().token;
     if (!token?.trim()) {
@@ -159,7 +177,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  applyLogin:             ({ token, user_id, user }, childrens = []) => {
+  applyLogin:             ({ token, user_id, user }, childrens = [], favorites = []) => {
     const trimmedToken = token.trim();
     set({
       auth: true,
@@ -169,6 +187,7 @@ export const useStore = create<AppState>((set, get) => ({
       schools: [],
       classes: [],
       childrens,
+      favorites,
     });
     void get().loadClasses();
   },
@@ -182,5 +201,6 @@ export const useStore = create<AppState>((set, get) => ({
       schools: [],
       classes: [],
       childrens: [],
+      favorites: [],
     }),
 }));
