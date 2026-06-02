@@ -15,6 +15,15 @@
   color: #e86a24;
 }
 
+.event-view__toolbar-edit {
+  --color: #e86a24;
+  margin: 0;
+}
+
+.event-view__toolbar-edit ion-icon {
+  font-size: 22px;
+}
+
 .event-view {
   --background: #f2f2f2;
 }
@@ -50,28 +59,54 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
-.event-view__share-btn {
+.event-view__hero-actions {
   position: absolute;
   top: 14px;
   right: 14px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 8px;
+}
+
+.event-view__share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fde8dc;
   color: #e86a24;
-  font-size: 12px;
-  font-weight: 600;
   cursor: pointer;
-  max-width: 42%;
-  line-height: 1.2;
-  text-align: left;
 }
 
 .event-view__share-btn svg {
   flex-shrink: 0;
+}
+
+.event-view__edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: #fde8dc;
+  color: #e86a24;
+  cursor: pointer;
+}
+
+.event-view__edit-btn ion-icon {
+  font-size: 20px;
+}
+
+.event-view__edit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .event-view__title {

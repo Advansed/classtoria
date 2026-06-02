@@ -1,16 +1,20 @@
 import {
+  IonAlert,
   IonContent,
   IonHeader,
+  IonIcon,
   IonPage,
   IonSpinner,
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
+import { createOutline } from 'ionicons/icons';
 import { Calendar, Crown, MessageCircle, Play } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useToast } from '../../../hooks/useToast';
 import { useStore } from '../../../Store';
+import { editCollection } from '../classesApi';
 import { useClassesStore } from '../classesStore';
 import { CLASSES_EVENT_VIEW, CLASSES_IMAGE_VIEW } from '../routes';
 import type {
@@ -28,6 +32,7 @@ import {
   imageStatsLabel,
   imageThumbRaw,
 } from './classViewUtils';
+import { isEventOwner } from '../utils';
 import { useClassImageSrc } from './useClassImageSrc';
 import './CollectionViewPage.css';
 
@@ -64,6 +69,7 @@ const CollectionViewPage: React.FC = () => {
   const toast = useToast();
   const state = location.state ?? {};
   const token = useStore((s) => s.token);
+  const userId = useStore((s) => s.user_id);
 
   const activeClassId = useClassesStore((s) => s.activeClassId);
   const loadClass = useClassesStore((s) => s.loadClass);
@@ -81,6 +87,8 @@ const CollectionViewPage: React.FC = () => {
   const eventDate = state.eventDate?.trim() || '—';
 
   const classDetail = useClassesStore((s) => (classId ? s.getClassById(classId) : undefined));
+  const [editNameOpen, setEditNameOpen] = useState(false);
+  const [submittingEditName, setSubmittingEditName] = useState(false);
 
   useEffect(() => {
     if (!classId || !token?.trim()) {
@@ -105,6 +113,7 @@ const CollectionViewPage: React.FC = () => {
   );
 
   const collectionTitle = collection ? collectionLabel(collection) : '—';
+  const canEdit = isEventOwner(userId, event);
   const photos = useMemo(
     () => collection?.images.filter((img) => imageThumbRaw(img)) ?? [],
     [collection?.images],
@@ -156,6 +165,50 @@ const CollectionViewPage: React.FC = () => {
     toast.show('Просмотр видео скоро будет доступен');
   };
 
+  const submitEditCollection = async (name: string) => {
+    const trimmedToken = token?.trim() ?? '';
+    const currentCollectionId = collection?.id?.trim() || collectionId;
+    if (!trimmedToken) {
+      toast.warning('Войдите в аккаунт');
+      return;
+    }
+    if (!currentCollectionId) {
+      toast.warning('У фотосессии нет id');
+      return;
+    }
+    if (!name) {
+      toast.warning('Укажите название фотосессии');
+      return;
+    }
+
+    setSubmittingEditName(true);
+    try {
+      const res = await editCollection({
+        token: trimmedToken,
+        collectionId: currentCollectionId,
+        name,
+      });
+      if (!res.success) {
+        toast.error(res.message?.trim() || 'Не удалось изменить название фотосессии');
+        return;
+      }
+      toast.success(res.message?.trim() || 'Название фотосессии обновлено');
+      setEditNameOpen(false);
+      if (classId) {
+        await loadClass({
+          classId,
+          schoolId,
+          token: trimmedToken,
+          name: classNameFromRoute,
+        });
+      }
+    } catch {
+      toast.error('Ошибка сети');
+    } finally {
+      setSubmittingEditName(false);
+    }
+  };
+
   const eventBackState = useMemo(
     (): EventViewRouteState => ({
       schoolId,
@@ -164,8 +217,20 @@ const CollectionViewPage: React.FC = () => {
       className: displayClassName,
       eventId: state.eventId,
       eventIndex: state.eventIndex,
+      ...((event?.creatorId ?? event?.creator)?.trim()
+        ? { eventCreatorId: (event.creatorId ?? event.creator)!.trim() }
+        : {}),
     }),
-    [schoolId, schoolName, classId, displayClassName, state.eventId, state.eventIndex],
+    [
+      schoolId,
+      schoolName,
+      classId,
+      displayClassName,
+      state.eventId,
+      state.eventIndex,
+      event?.creator,
+      event?.creatorId,
+    ],
   );
 
   return (
@@ -209,7 +274,20 @@ const CollectionViewPage: React.FC = () => {
                 </div>
               </article>
 
-              <h2 className="collection-view__collection-title">{collectionTitle}</h2>
+              <div className="collection-view__collection-head">
+                <h2 className="collection-view__collection-title">{collectionTitle}</h2>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    className="collection-view__edit-btn"
+                    aria-label="Редактировать фотосессию"
+                    disabled={submittingEditName}
+                    onClick={() => setEditNameOpen(true)}
+                  >
+                    <IonIcon icon={createOutline} aria-hidden />
+                  </button>
+                ) : null}
+              </div>
 
               {videoThumb ? (
                 <button type="button" className="collection-view__video-btn" onClick={openVideo}>
@@ -243,6 +321,33 @@ const CollectionViewPage: React.FC = () => {
             </>
           ) : null}
         </div>
+        <IonAlert
+          isOpen={editNameOpen}
+          onDidDismiss={() => setEditNameOpen(false)}
+          header="Редактировать фотосессию"
+          inputs={[
+            {
+              name: 'name',
+              type: 'text',
+              placeholder: 'Название фотосессии',
+              value: collectionTitle === '—' ? '' : collectionTitle,
+            },
+          ]}
+          buttons={[
+            { text: 'Отмена', role: 'cancel' },
+            {
+              text: submittingEditName ? '…' : 'Сохранить',
+              handler: (data) => {
+                const name = String(data?.name ?? '').trim();
+                if (!name) {
+                  toast.warning('Укажите название фотосессии');
+                  return false;
+                }
+                void submitEditCollection(name);
+              },
+            },
+          ]}
+        />
       </IonContent>
     </IonPage>
   );

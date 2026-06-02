@@ -1,7 +1,26 @@
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif|heic)$/i;
 
+type SaveFilePickerOptionsCompat = {
+  suggestedName?: string;
+  types?: Array<{
+    description?: string;
+    accept: Record<string, string[]>;
+  }>;
+};
+
+type FileSystemWritableFileStreamCompat = {
+  write: (data: Blob) => Promise<void>;
+  close: () => Promise<void>;
+};
+
+type FileSystemFileHandleCompat = {
+  createWritable: () => Promise<FileSystemWritableFileStreamCompat>;
+};
+
 type SaveFilePickerWindow = Window & {
-  showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
+  showSaveFilePicker?: (
+    options?: SaveFilePickerOptionsCompat,
+  ) => Promise<FileSystemFileHandleCompat>;
 };
 
 export const guessImageFilename = (imageId?: string, storageKey?: string): string => {

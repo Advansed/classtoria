@@ -43,6 +43,117 @@ export async function getClasses(token: string): Promise<{
   };
 }
 
+export type AddSchoolParams = {
+  token: string;
+  name: string;
+  region: string;
+  location: string;
+};
+
+/** `post('add_school', { token, name, region, location })`. */
+export async function addSchool(params: AddSchoolParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const name = params.name.trim();
+  const region = params.region.trim();
+  const location = params.location.trim();
+
+  if (!trimmedToken || !name) {
+    return {
+      success: false,
+      data: null,
+      message: 'Укажите название школы',
+    };
+  }
+
+  return api('add_school', {
+    token: trimmedToken,
+    name,
+    region,
+    location,
+  });
+}
+
+export type AddClassParams = {
+  token: string;
+  name: string;
+  schoolId: string;
+};
+
+/** `post('add_class', { token, name, school_id })`. */
+export async function addClass(params: AddClassParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const name = params.name.trim();
+  const schoolId = params.schoolId.trim();
+
+  if (!trimmedToken || !name || !schoolId) {
+    return {
+      success: false,
+      data: null,
+      message: 'Укажите название класса и школу',
+    };
+  }
+
+  return api('add_class', {
+    token: trimmedToken,
+    name,
+    school_id: schoolId,
+  });
+}
+
+export type EditSchoolParams = {
+  token: string;
+  schoolId: string;
+  name: string;
+};
+
+/** `post('set_school', { token, school_id, name })`. */
+export async function editSchool(params: EditSchoolParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const schoolId = params.schoolId.trim();
+  const name = params.name.trim();
+
+  if (!trimmedToken || !schoolId || !name) {
+    return {
+      success: false,
+      data: null,
+      message: 'Укажите название школы',
+    };
+  }
+
+  return api('set_school', {
+    token: trimmedToken,
+    school_id: schoolId,
+    name,
+  });
+}
+
+export type EditClassParams = {
+  token: string;
+  classId: string;
+  name: string;
+};
+
+/** `post('edit_class', { token, class_id, name })`. */
+export async function editClass(params: EditClassParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const classId = params.classId.trim();
+  const name = params.name.trim();
+
+  if (!trimmedToken || !classId || !name) {
+    return {
+      success: false,
+      data: null,
+      message: 'Укажите название класса',
+    };
+  }
+
+  return api('edit_class', {
+    token: trimmedToken,
+    class_id: classId,
+    name,
+  });
+}
+
 /** Ответ `post('get_class', { token, class_id, school_id? })`. */
 export async function getClass(params: GetClassParams): Promise<ClassDetail | null> {
   const trimmedToken = params.token.trim();
@@ -203,9 +314,45 @@ export async function addEvent(params: AddEventParams): Promise<ApiResponse<unkn
   return api('add_event', body);
 }
 
+export type EditEventParams = {
+  token: string;
+  eventId: string;
+  name: string;
+  date: string;
+};
+
+/** `post('edit_event', { token, event_id, name, date })`. */
+export async function editEvent(params: EditEventParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const eventId = params.eventId.trim();
+  const name = params.name.trim();
+  const date = params.date.trim();
+
+  if (!trimmedToken || !eventId || !name || !date) {
+    return {
+      success: false,
+      data: null,
+      message: 'Укажите название и дату события',
+    };
+  }
+
+  return api('edit_event', {
+    token: trimmedToken,
+    event_id: eventId,
+    name,
+    date,
+  });
+}
+
 export type AddCollectionParams = {
   token: string;
   eventId: string;
+  name: string;
+};
+
+export type EditCollectionParams = {
+  token: string;
+  collectionId: string;
   name: string;
 };
 
@@ -281,6 +428,27 @@ export async function addCollection(
     collectionId: collectionId || undefined,
     collection: collection ?? undefined,
   };
+}
+
+/** `post('edit_collection', { token, collection_id, name })` — переименование фотосессии. */
+export async function editCollection(params: EditCollectionParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const collectionId = params.collectionId.trim();
+  const name = params.name.trim();
+
+  if (!trimmedToken || !collectionId || !name) {
+    return {
+      success: false,
+      data: null,
+      message: 'Укажите название фотосессии',
+    };
+  }
+
+  return api('edit_collection', {
+    token: trimmedToken,
+    collection_id: collectionId,
+    name,
+  });
 }
 
 export type AddImageParams = {

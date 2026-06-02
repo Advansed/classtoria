@@ -1,4 +1,5 @@
 import {
+  IonAlert,
   IonBackButton,
   IonButtons,
   IonContent,
@@ -16,17 +17,21 @@ import {
   chatbubbleOutline,
   chevronForwardOutline,
   cloudUploadOutline,
+  createOutline,
   heartOutline,
   peopleOutline,
   trophyOutline,
 } from 'ionicons/icons';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
+import { useToast } from '../../../hooks/useToast';
 import { useStore } from '../../../Store';
-import type { ClassRouteState } from '../types';
+import { editClass, editEvent } from '../classesApi';
+import type { ClassEvent, ClassRouteState } from '../types';
 import { useClassesStore } from '../classesStore';
 import { CLASSES_BASE, CLASSES_EVENT_VIEW, CLASSES_UPLOAD, CLASSES_WHITELIST } from '../routes';
 import { filterTeachers, formatPhoneDisplay, resolveWhitelistTeacher } from '../utils';
+import { toDisplayDate, toInputDate } from './eventFormUtils';
 import './ClassCabinetPage.css';
 
 const EVENT_IMG = '/images/start-gallery.png';
@@ -47,8 +52,13 @@ const eventPreview = (preview: string | undefined): string => {
 const ClassCabinetPage: React.FC = () => {
   const history = useHistory();
   const location = useLocation<ClassRouteState>();
+  const toast = useToast();
   const state = location.state ?? {};
   const token = useStore((s) => s.token);
+  const [editEventTarget, setEditEventTarget] = useState<ClassEvent | null>(null);
+  const [submittingEditEvent, setSubmittingEditEvent] = useState(false);
+  const [editClassOpen, setEditClassOpen] = useState(false);
+  const [submittingEditClass, setSubmittingEditClass] = useState(false);
 
   const activeClassId = useClassesStore((s) => s.activeClassId);
   const classId = state.classId?.trim() || activeClassId?.trim() || '';
@@ -94,6 +104,83 @@ const ClassCabinetPage: React.FC = () => {
   const events = classDetail?.events ?? [];
   const stats = classDetail?.stats;
 
+  const submitEditEvent = async (eventId: string, name: string, date: string) => {
+    const trimmedToken = token?.trim() ?? '';
+    if (!trimmedToken) {
+      toast.warning('Войдите в аккаунт');
+      return;
+    }
+    if (!name) {
+      toast.warning('Укажите название события');
+      return;
+    }
+    if (!date) {
+      toast.warning('Укажите дату события');
+      return;
+    }
+
+    setSubmittingEditEvent(true);
+    try {
+      const res = await editEvent({ token: trimmedToken, eventId, name, date });
+      if (!res.success) {
+        toast.error(res.message?.trim() || 'Не удалось изменить название события');
+        return;
+      }
+      toast.success(res.message?.trim() || 'Название события обновлено');
+      setEditEventTarget(null);
+      if (classId && trimmedToken) {
+        await loadClass({
+          classId,
+          schoolId,
+          token: trimmedToken,
+          name: classNameFromRoute,
+        });
+      }
+    } catch {
+      toast.error('Ошибка сети');
+    } finally {
+      setSubmittingEditEvent(false);
+    }
+  };
+
+  const submitEditClass = async (nextName: string) => {
+    const trimmedToken = token?.trim() ?? '';
+    const trimmedClassId = classId.trim();
+    if (!trimmedToken) {
+      toast.warning('Войдите в аккаунт');
+      return;
+    }
+    if (!trimmedClassId) {
+      toast.warning('У класса нет id');
+      return;
+    }
+    if (!nextName) {
+      toast.warning('Укажите название класса');
+      return;
+    }
+
+    setSubmittingEditClass(true);
+    try {
+      const res = await editClass({ token: trimmedToken, classId: trimmedClassId, name: nextName });
+      if (!res.success) {
+        toast.error(res.message?.trim() || 'Не удалось изменить название класса');
+        return;
+      }
+      toast.success(res.message?.trim() || 'Название класса обновлено');
+      setEditClassOpen(false);
+      await loadClass({
+        classId: trimmedClassId,
+        schoolId,
+        token: trimmedToken,
+        name: nextName,
+      });
+    } catch {
+      toast.error('Ошибка сети');
+    } finally {
+      setSubmittingEditClass(false);
+    }
+  };
+
   const openWhitelist = () => {
     history.push(CLASSES_WHITELIST, {
       schoolId,
@@ -120,6 +207,9 @@ const ClassCabinetPage: React.FC = () => {
       className: displayClassName,
       eventId: ev.id,
       eventIndex: index,
+      ...((ev.creatorId ?? ev.creator)?.trim()
+        ? { eventCreatorId: (ev.creatorId ?? ev.creator)!.trim() }
+        : {}),
     });
   };
 
@@ -141,9 +231,22 @@ const ClassCabinetPage: React.FC = () => {
       <IonContent fullscreen className="class-cabinet">
         <div className="class-cabinet__scroll">
           <div className="class-cabinet__top">
-            <div>
+            <div className="class-cabinet__title-row">
               <h1 className="class-cabinet__school">{schoolName}</h1>
-              <p className="class-cabinet__class">{displayClassName}</p>
+              <div className="class-cabinet__class-row">
+                <p className="class-cabinet__class">{displayClassName}</p>
+                {classId ? (
+                  <button
+                    type="button"
+                    className="class-cabinet__class-edit"
+                    aria-label={`Редактировать класс «${displayClassName}»`}
+                    disabled={submittingEditClass}
+                    onClick={() => setEditClassOpen(true)}
+                  >
+                    <IonIcon icon={createOutline} aria-hidden />
+                  </button>
+                ) : null}
+              </div>
             </div>
             <IonSelect
               interface="popover"
@@ -284,10 +387,26 @@ const ClassCabinetPage: React.FC = () => {
                       <div className="class-cabinet__event-body">
                         <div className="class-cabinet__event-title-row">
                           <h3 className="class-cabinet__event-title">{ev.title}</h3>
-                          <span className="class-cabinet__event-comments" aria-label={`${comments} материалов`}>
-                            <IonIcon icon={chatbubbleOutline} aria-hidden />
-                            {comments}
-                          </span>
+                          <div className="class-cabinet__event-title-actions">
+                            {ev.id?.trim() ? (
+                              <button
+                                type="button"
+                                className="class-cabinet__event-edit"
+                                aria-label={`Редактировать событие «${ev.title}»`}
+                                disabled={submittingEditEvent}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditEventTarget(ev);
+                                }}
+                              >
+                                <IonIcon icon={createOutline} aria-hidden />
+                              </button>
+                            ) : null}
+                            <span className="class-cabinet__event-comments" aria-label={`${comments} материалов`}>
+                              <IonIcon icon={chatbubbleOutline} aria-hidden />
+                              {comments}
+                            </span>
+                          </div>
                         </div>
                         <p className="class-cabinet__event-meta">{ev.date}</p>
                       </div>
@@ -306,6 +425,79 @@ const ClassCabinetPage: React.FC = () => {
 
           <div className="class-cabinet__bottom-spacer" aria-hidden />
         </div>
+
+        <IonAlert
+          isOpen={editClassOpen}
+          onDidDismiss={() => setEditClassOpen(false)}
+          header="Редактировать класс"
+          inputs={[
+            {
+              name: 'name',
+              type: 'text',
+              placeholder: 'Название класса',
+              value: displayClassName === '—' ? '' : displayClassName,
+            },
+          ]}
+          buttons={[
+            { text: 'Отмена', role: 'cancel' },
+            {
+              text: submittingEditClass ? '…' : 'Сохранить',
+              handler: (data) => {
+                const name = String(data?.name ?? '').trim();
+                if (!name) {
+                  toast.warning('Укажите название класса');
+                  return false;
+                }
+                void submitEditClass(name);
+              },
+            },
+          ]}
+        />
+
+        <IonAlert
+          isOpen={editEventTarget != null}
+          onDidDismiss={() => setEditEventTarget(null)}
+          header="Редактировать событие"
+          inputs={[
+            {
+              name: 'name',
+              type: 'text',
+              placeholder: 'Название события',
+              value: editEventTarget?.title ?? '',
+            },
+            {
+              name: 'date',
+              type: 'date',
+              value: toInputDate(editEventTarget?.date ?? ''),
+            },
+          ]}
+          buttons={[
+            { text: 'Отмена', role: 'cancel' },
+            {
+              text: submittingEditEvent ? '…' : 'Сохранить',
+              handler: (data) => {
+                const target = editEventTarget;
+                const eventId = target?.id?.trim() ?? '';
+                if (!target || !eventId) {
+                  toast.warning('У события нет id');
+                  return false;
+                }
+                const name = String(data?.name ?? '').trim();
+                const dateIso = String(data?.date ?? '').trim();
+                const date = dateIso ? toDisplayDate(dateIso) : target.date.trim();
+                if (!name) {
+                  toast.warning('Укажите название события');
+                  return false;
+                }
+                if (!date) {
+                  toast.warning('Укажите дату события');
+                  return false;
+                }
+                void submitEditEvent(eventId, name, date);
+              },
+            },
+          ]}
+        />
       </IonContent>
     </IonPage>
   );

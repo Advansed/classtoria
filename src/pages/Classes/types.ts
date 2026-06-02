@@ -27,6 +27,8 @@ export type ClassCollection = {
   date:                   string;
   name:                   string;
   title:                  string;
+  /** `creator_id` коллекции (если на событии нет — берём из первой коллекции). */
+  creatorId?:             string;
   /** Имя автора коллекции для списка на экране события. */
   creatorName?:           string;
   images:                 ClassImage[];
@@ -39,8 +41,10 @@ export type ClassCollection = {
 /** Событие класса. */
 export type ClassEvent = {
   id?:                    string;
-  /** Идентификатор создателя события (для прав редактирования). */
+  /** Идентификатор создателя (`creator_id` из API). */
   creator?:               string;
+  /** То же, что `creator` — для явного доступа к `creator_id`. */
+  creatorId?:             string;
   title:                  string;
   /** Дата/период события (в API — `period`, в UI — «Дата»). */
   date:                   string;
@@ -86,6 +90,8 @@ export type CollectionUploadRouteState = ClassRouteState & {
 export type EventViewRouteState = ClassRouteState & {
   eventId?:               string;
   eventIndex?:            number;
+  /** Создатель события (если в ответе `get_class` нет `creator_id`). */
+  eventCreatorId?:        string;
 };
 
 /** Просмотр фотосессии (коллекции). */

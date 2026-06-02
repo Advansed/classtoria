@@ -72,17 +72,52 @@
 
 .class-cabinet__school {
   margin: 0 0 4px;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: #1a1a1a;
   line-height: 1.2;
 }
 
+.class-cabinet__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .class-cabinet__class {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #6b6560;
+}
+
+.class-cabinet__class-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.class-cabinet__class-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #fde8dc;
+  color: #e86a24;
+  cursor: pointer;
+}
+
+.class-cabinet__class-edit ion-icon {
+  font-size: 17px;
+}
+
+.class-cabinet__class-edit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .class-cabinet__year-select {
@@ -357,6 +392,36 @@
   justify-content: space-between;
   gap: 6px;
   margin-bottom: 4px;
+}
+
+.class-cabinet__event-title-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.class-cabinet__event-edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #f2f2f2;
+  color: #4e5c86;
+  cursor: pointer;
+}
+
+.class-cabinet__event-edit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.class-cabinet__event-edit ion-icon {
+  font-size: 14px;
 }
 
 .class-cabinet__event-title {

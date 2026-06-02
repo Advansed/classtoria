@@ -94,6 +94,7 @@ export const parseClassCollection = (row: unknown): ClassCollection | null => {
 
   const idRaw = o.id ?? o.collection_id ?? o.collectionId;
   const id = idRaw != null ? String(idRaw).trim() : '';
+  const creatorId = parseEventCreatorId(o);
   const creatorName =
     readStr(o.creator_name ?? o.creatorName ?? o.author ?? o.author_name ?? o.authorName);
 
@@ -108,6 +109,7 @@ export const parseClassCollection = (row: unknown): ClassCollection | null => {
     date: readStr(o.date),
     name: readStr(o.name),
     title: readStr(o.title),
+    ...(creatorId ? { creatorId } : {}),
     ...(creatorName ? { creatorName } : {}),
     images,
     ...(videoUrl ? { videoUrl } : {}),
@@ -136,11 +138,59 @@ export const parseEventComment = (row: unknown): EventComment | null => {
   };
 };
 
-export const parseClassEvent = (row: unknown): ClassEvent | null => {
-  if (!row || typeof row !== 'object') {
+const unwrapEventRow = (row: unknown): Record<string, unknown> | null => {
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
     return null;
   }
   const o = row as Record<string, unknown>;
+  const nested = o.event ?? o.Event ?? o.item ?? o.data;
+  if (nested != null && typeof nested === 'object' && !Array.isArray(nested)) {
+    return nested as Record<string, unknown>;
+  }
+  return o;
+};
+
+const creatorIdFromCollections = (collections: ClassCollection[]): string => {
+  for (const col of collections) {
+    const id = col.creatorId?.trim();
+    if (id) {
+      return id;
+    }
+  }
+  return '';
+};
+
+const readCreatorScalar = (o: Record<string, unknown>): string => {
+  const creator = o.creator;
+  if (creator == null || typeof creator === 'object') {
+    return '';
+  }
+  return readIdValue(creator);
+};
+
+const parseEventsList = (raw: unknown): ClassEvent[] => {
+  const fromArray = parseJsonArray(raw)
+    .map(parseClassEvent)
+    .filter((item): item is ClassEvent => item !== null);
+  if (fromArray.length > 0) {
+    return fromArray;
+  }
+
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return [];
+  }
+
+  return Object.values(raw as Record<string, unknown>)
+    .map(parseClassEvent)
+    .filter((item): item is ClassEvent => item !== null);
+};
+
+export const parseClassEvent = (row: unknown): ClassEvent | null => {
+  const o = unwrapEventRow(row);
+  if (!o) {
+    return null;
+  }
+
   const collections = parseJsonArray(o.collections)
     .map(parseClassCollection)
     .filter((item): item is ClassCollection => item !== null);
@@ -156,8 +206,8 @@ export const parseClassEvent = (row: unknown): ClassEvent | null => {
 
   const idRaw = o.id ?? o.event_id ?? o.eventId;
   const id = idRaw != null ? String(idRaw).trim() : '';
-  const creatorRaw = o.creator ?? o.creator_id ?? o.creatorId ?? o.user_id ?? o.userId;
-  const creator = creatorRaw != null ? String(creatorRaw).trim() : '';
+  const creatorId =
+    parseEventCreatorId(o) || readCreatorScalar(o) || creatorIdFromCollections(collections);
 
   const dateRaw =
     o.period ?? o.date ?? o.event_date ?? o.eventDate ?? o.datetime ?? o.created_at ?? o.createdAt;
@@ -169,7 +219,9 @@ export const parseClassEvent = (row: unknown): ClassEvent | null => {
 
   return {
     ...(id ? { id } : {}),
-    ...(creator ? { creator } : {}),
+    // Гарантируем, что creator и creatorId всегда присутствуют
+    creator: creatorId || '',
+    creatorId: creatorId || '',
     title,
     date,
     ...(description ? { description } : {}),
@@ -435,6 +487,113 @@ export const filterTeachers = (members: ClassMember[]): ClassMember[] =>
 export const isClassAdminRole = (role: string): boolean =>
   role.trim().toLowerCase() === 'admin';
 
+const readIdValue = (raw: unknown): string => {
+  if (raw == null) {
+    return '';
+  }
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return String(Math.trunc(raw));
+  }
+  return String(raw).trim();
+};
+
+const CREATOR_ID_KEY_RE =
+  /^(creator_id|creatorid|owner_id|ownerid|user_id|userid|created_by|createdby|author_id|authorid|id_creator|member_id|memberid|uid)$/i;
+
+/** Идентификатор создателя события из полей API. */
+export const parseEventCreatorId = (o: Record<string, unknown>): string => {
+  const scalarKeys = [
+    'creator_id',
+    'creatorId',
+    'owner_id',
+    'ownerId',
+    'user_id',
+    'userId',
+    'created_by',
+    'createdBy',
+    'author_id',
+    'authorId',
+    'id_creator',
+    'member_id',
+    'memberId',
+    'uid',
+  ] as const;
+
+  for (const key of scalarKeys) {
+    const id = readIdValue(o[key]);
+    if (id) {
+      return id;
+    }
+  }
+
+  for (const [key, value] of Object.entries(o)) {
+    if (!CREATOR_ID_KEY_RE.test(key)) {
+      continue;
+    }
+    const id = readIdValue(value);
+    if (id) {
+      return id;
+    }
+  }
+
+  const creator = o.creator ?? o.user ?? o.author;
+  if (creator != null && typeof creator === 'object' && !Array.isArray(creator)) {
+    const nested = creator as Record<string, unknown>;
+    const nestedId = readIdValue(
+      nested.id ?? nested.user_id ?? nested.userId ?? nested.creator_id ?? nested.creatorId,
+    );
+    if (nestedId) {
+      return nestedId;
+    }
+  }
+
+  if (creator != null && typeof creator !== 'object') {
+    const scalar = readIdValue(creator);
+    if (/^\d+$/.test(scalar)) {
+      return scalar;
+    }
+  }
+
+  return '';
+};
+
+/** `creator` / `creatorId` с события. */
+export const getEventCreatorId = (
+  event: { creator?: string; creatorId?: string } | undefined,
+): string => event?.creatorId?.trim() || event?.creator?.trim() || '';
+
+const sameUserId = (left: string, right: string): boolean => {
+  const a = left.trim();
+  const b = right.trim();
+  if (!a || !b) {
+    return false;
+  }
+  if (a === b) {
+    return true;
+  }
+  const na = Number(a);
+  const nb = Number(b);
+  return Number.isFinite(na) && Number.isFinite(nb) && na === nb;
+};
+
+/** Владелец события: `creator_id` совпадает с `user_id`. */
+export const isEventOwner = (
+  userId: string,
+  event: { creator?: string; creatorId?: string } | undefined,
+): boolean => sameUserId(getEventCreatorId(event), userId);
+
+/** Админ школы: роль в профиле или admin хотя бы в одном классе школы. */
+export const canManageSchool = (
+  profileRole: string,
+  school: { classes: { role: string }[] },
+): boolean =>
+  isClassAdminRole(profileRole) ||
+  school.classes.some((c) => isClassAdminRole(c.role));
+
+/** Админ класса: роль в профиле или admin в этом классе. */
+export const canManageClass = (profileRole: string, classRole: string): boolean =>
+  isClassAdminRole(profileRole) || isClassAdminRole(classRole);
+
 export const countMembersByRole = (members: ClassMember[]): {
   studentCount: number;
   parentCount: number;
@@ -461,17 +620,11 @@ export const parseClassDetail = (
     return null;
   }
 
-  console.log(o.members);
-
-  const members:any = parseJsonArray(o.members)
+  const members = parseJsonArray(o.members)
     .map(parseClassMember)
     .filter((item): item is ClassMember => item !== null);
 
-  console.log(members);
-
-  const events = parseJsonArray(o.events)
-    .map(parseClassEvent)
-    .filter((item): item is ClassEvent => item !== null);
+  const events = parseEventsList(o.events);
 
   return {
     id: String(id),

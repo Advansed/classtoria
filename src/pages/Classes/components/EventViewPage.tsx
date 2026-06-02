@@ -1,13 +1,17 @@
 import {
+  IonAlert,
   IonBackButton,
+  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonPage,
   IonSpinner,
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
+import { createOutline } from 'ionicons/icons';
 import {
   Camera,
   ChevronRight,
@@ -20,6 +24,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useToast } from '../../../hooks/useToast';
 import { useStore } from '../../../Store';
+import { editEvent } from '../classesApi';
 import { useClassesStore } from '../classesStore';
 import { CLASSES_CABINET, CLASSES_COLLECTION_UPLOAD, CLASSES_COLLECTION_VIEW } from '../routes';
 import type {
@@ -29,7 +34,8 @@ import type {
   CollectionViewRouteState,
   EventViewRouteState,
 } from '../types';
-import { resolveWhitelistTeacher, filterTeachers } from '../utils';
+import { filterTeachers, isEventOwner, resolveWhitelistTeacher } from '../utils';
+import { toDisplayDate, toInputDate } from './eventFormUtils';
 import { useClassImageSrc } from './useClassImageSrc';
 import './EventViewPage.css';
 
@@ -110,12 +116,16 @@ const EventViewPage: React.FC = () => {
   const classNameFromRoute = state.className?.trim() || '';
   const eventId = state.eventId?.trim() || '';
   const eventIndex = state.eventIndex;
+  const routeCreatorId = state.eventCreatorId?.trim() ?? '';
 
   const loadClass = useClassesStore((s) => s.loadClass);
   const loading = useClassesStore((s) => s.loading);
   const classDetail = useClassesStore((s) => (classId ? s.getClassById(classId) : undefined));
 
+  console.log('classdetail', classDetail)
   const [commentDraft, setCommentDraft] = useState('');
+  const [editNameOpen, setEditNameOpen] = useState(false);
+  const [submittingEditName, setSubmittingEditName] = useState(false);
 
   useEffect(() => {
     if (!classId || !token?.trim()) {
@@ -131,10 +141,27 @@ const EventViewPage: React.FC = () => {
 
   const displayClassName = classDetail?.name || classNameFromRoute || '—';
   const events = classDetail?.events ?? [];
-  const event = useMemo(
-    () => findEvent(events, eventId, eventIndex),
-    [events, eventId, eventIndex],
-  );
+  const event = useMemo(() => {
+    const found = findEvent(events, eventId, eventIndex);
+    if (!found) {
+      return undefined;
+    }
+    const creatorId =
+      found.creatorId?.trim() || found.creator?.trim() || routeCreatorId;
+    // Гарантируем, что creator и creatorId всегда присутствуют
+    if (creatorId) {
+      if (found.creator === creatorId && found.creatorId === creatorId) {
+        return found;
+      }
+      return { ...found, creator: creatorId, creatorId };
+    }
+    // Если creatorId не найден, но поля существуют - оставляем как есть
+    // Если полей нет - добавляем пустые строки
+    if (found.creator !== undefined || found.creatorId !== undefined) {
+      return found;
+    }
+    return { ...found, creator: '', creatorId: '' };
+  }, [events, eventId, eventIndex, routeCreatorId]);
 
   const members = classDetail?.members ?? [];
   const teacherMembers = useMemo(() => filterTeachers(members), [members]);
@@ -143,7 +170,48 @@ const EventViewPage: React.FC = () => {
     [classDetail?.teacher, teacherMembers, members],
   );
   const authorFallback = teacherCard.name || '—';
-  const canEdit = Boolean(event?.creator?.trim() && event.creator.trim() === userId.trim());
+  console.log('canEdit', userId, event);
+
+  const canEdit = isEventOwner(userId, event);
+
+  const submitEditEvent = async (eventId: string, name: string, date: string) => {
+    const trimmedToken = token?.trim() ?? '';
+    if (!trimmedToken) {
+      toast.warning('Войдите в аккаунт');
+      return;
+    }
+    if (!name) {
+      toast.warning('Укажите название события');
+      return;
+    }
+    if (!date) {
+      toast.warning('Укажите дату события');
+      return;
+    }
+
+    setSubmittingEditName(true);
+    try {
+      const res = await editEvent({ token: trimmedToken, eventId, name, date });
+      if (!res.success) {
+        toast.error(res.message?.trim() || 'Не удалось изменить название события');
+        return;
+      }
+      toast.success(res.message?.trim() || 'Название события обновлено');
+      setEditNameOpen(false);
+      if (classId && trimmedToken) {
+        await loadClass({
+          classId,
+          schoolId,
+          token: trimmedToken,
+          name: classNameFromRoute,
+        });
+      }
+    } catch {
+      toast.error('Ошибка сети');
+    } finally {
+      setSubmittingEditName(false);
+    }
+  };
 
   const photoSessions = event?.collections.length ?? 0;
   const videos = event?.videoCount ?? 0;
@@ -260,14 +328,27 @@ const EventViewPage: React.FC = () => {
           {event ? (
             <>
               <article className="event-view__hero-card" aria-label={event.title}>
-                <button
-                  type="button"
-                  className="event-view__share-btn"
-                  onClick={() => void shareEvent()}
-                >
-                  <Share2 size={16} aria-hidden />
-                  Поделиться событием
-                </button>
+                <div className="event-view__hero-actions">
+                  <button
+                    type="button"
+                    className="event-view__share-btn"
+                    onClick={() => void shareEvent()}
+                    aria-label="Поделиться событием"
+                  >
+                    <Share2 size={16} aria-hidden />
+                  </button>
+                  {canEdit && event.id?.trim() ? (
+                    <button
+                      type="button"
+                      className="event-view__edit-btn"
+                      aria-label="Редактировать событие"
+                      disabled={submittingEditName}
+                      onClick={() => setEditNameOpen(true)}
+                    >
+                      <IonIcon icon={createOutline} aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
 
                 <h1 className="event-view__title">{event.title}</h1>
                 <p className="event-view__date">{event.date}</p>
@@ -408,6 +489,50 @@ const EventViewPage: React.FC = () => {
 
           <div className="event-view__bottom-spacer" aria-hidden />
         </div>
+
+        <IonAlert
+          isOpen={editNameOpen}
+          onDidDismiss={() => setEditNameOpen(false)}
+          header="Редактировать событие"
+          inputs={[
+            {
+              name: 'name',
+              type: 'text',
+              placeholder: 'Название события',
+              value: event?.title ?? '',
+            },
+            {
+              name: 'date',
+              type: 'date',
+              value: toInputDate(event?.date ?? ''),
+            },
+          ]}
+          buttons={[
+            { text: 'Отмена', role: 'cancel' },
+            {
+              text: submittingEditName ? '…' : 'Сохранить',
+              handler: (data) => {
+                const eventId = event?.id?.trim() ?? '';
+                if (!eventId) {
+                  toast.warning('У события нет id');
+                  return false;
+                }
+                const name = String(data?.name ?? '').trim();
+                const dateIso = String(data?.date ?? '').trim();
+                const date = dateIso ? toDisplayDate(dateIso) : (event?.date.trim() ?? '');
+                if (!name) {
+                  toast.warning('Укажите название события');
+                  return false;
+                }
+                if (!date) {
+                  toast.warning('Укажите дату события');
+                  return false;
+                }
+                void submitEditEvent(eventId, name, date);
+              },
+            },
+          ]}
+        />
       </IonContent>
     </IonPage>
   );

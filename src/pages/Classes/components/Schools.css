@@ -21,10 +21,57 @@
   margin-bottom: 12px;
 }
 
+.classes-schools__section-head--row,
+.classes-schools__classes-head--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.classes-schools__section-title-wrap,
+.classes-schools__classes-head-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .classes-schools__classes-head {
   flex-direction: row;
   align-items: center;
   gap: 12px;
+}
+
+.classes-schools__add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 12px;
+  background: #e86a24;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.classes-schools__add-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.classes-schools__add-btn ion-icon {
+  font-size: 18px;
+}
+
+.classes-schools__add-btn--class {
+  background: #fce8dc;
+  color: #c55a1a;
 }
 
 .classes-schools__section-icon {
@@ -72,12 +119,31 @@
   gap: 10px;
 }
 
+.classes-schools__school-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.classes-schools__school-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.classes-schools__classes-panel {
+  padding: 2px 0 4px;
+}
+
 .classes-schools__school-card {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  width: auto;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px;
+  padding: 14px 14px 14px 14px;
   border: 1px solid transparent;
   border-radius: 16px;
   background: #fff;
@@ -157,9 +223,26 @@
   transition: transform 0.15s ease, color 0.15s ease;
 }
 
-.classes-schools__school-card--selected .classes-schools__school-chevron {
+.classes-schools__school-row--selected .classes-schools__school-chevron {
   color: #e86a24;
   transform: rotate(90deg);
+}
+
+.classes-schools__school-rail {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  width: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.classes-schools__school-rail-spacer {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
 }
 
 .classes-schools__classes-grid {
@@ -177,6 +260,60 @@
   padding: 12px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   box-sizing: border-box;
+}
+
+.classes-schools__edit-btn {
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: #f2f2f2;
+  color: #4e5c86;
+  cursor: pointer;
+}
+
+.classes-schools__edit-btn--school {
+  position: static;
+  align-self: auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: #f5f0eb;
+  color: #c55a1a;
+  z-index: 1;
+}
+
+.classes-schools__edit-btn--school ion-icon {
+  font-size: 16px;
+}
+
+.classes-schools__school-rail .classes-schools__school-chevron {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.classes-schools__edit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.classes-schools__edit-btn ion-icon {
+  font-size: 18px;
+}
+
+.classes-schools__edit-btn--class {
+  align-self: flex-start;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #f5f0eb;
+  color: #c55a1a;
 }
 
 .classes-schools__class-top {
@@ -284,4 +421,169 @@
 
 .classes-schools__bottom-spacer {
   height: 16px;
+}
+
+.classes-schools__modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.classes-schools__modal-backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.classes-schools__modal-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  max-height: min(90vh, 640px);
+  overflow-y: auto;
+  padding: 18px 16px 16px;
+  border-radius: 20px 20px 16px 16px;
+  background: #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.classes-schools__modal-title {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #1f2a4b;
+}
+
+.classes-schools__form-field {
+  margin-bottom: 14px;
+}
+
+.classes-schools__form-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e5c86;
+}
+
+.classes-schools__form-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid #e7e6e5;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 15px;
+  color: #1f2a4b;
+}
+
+.classes-schools__form-input:focus {
+  outline: none;
+  border-color: #e86a24;
+}
+
+.classes-schools__form-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #71767e;
+  line-height: 1.4;
+}
+
+.classes-schools__dadata-box {
+  padding: 0 14px;
+  border: 1px solid #e7e6e5;
+  border-radius: 12px;
+  background: #fff;
+  overflow: visible;
+}
+
+.classes-schools__dadata {
+  width: 100%;
+  position: relative;
+}
+
+.classes-schools__dadata-input {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  height: auto !important;
+  min-height: 44px;
+  padding: 12px 0 !important;
+  font-size: 15px !important;
+  font-family: inherit;
+  color: #1f2a4b;
+  background: transparent !important;
+}
+
+.classes-schools__dadata-input:focus {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.classes-schools__dadata-input::placeholder {
+  color: #9a9590;
+}
+
+.classes-schools__dadata-suggestions {
+  z-index: 120;
+  left: -15px;
+  right: -15px;
+  top: calc(100% + 4px);
+  border-radius: 10px;
+  border: 1px solid #e7e6e5;
+  box-shadow: 0 8px 24px rgba(16, 40, 90, 0.12);
+}
+
+.classes-schools__dadata-suggestion {
+  font-size: 14px;
+  padding: 10px 14px;
+}
+
+.classes-schools__dadata-suggestion--current,
+.classes-schools__dadata-suggestion:hover {
+  background: #fff8f4 !important;
+}
+
+.classes-schools__modal .react-dadata--highlighted {
+  color: #e86a24;
+}
+
+.classes-schools__modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.classes-schools__modal-btn {
+  flex: 1;
+  min-height: 44px;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.classes-schools__modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.classes-schools__modal-btn--ghost {
+  background: #f2f2f2;
+  color: #4e5c86;
+}
+
+.classes-schools__modal-btn--primary {
+  background: #e86a24;
+  color: #fff;
 }

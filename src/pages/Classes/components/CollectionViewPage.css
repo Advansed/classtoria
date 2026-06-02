@@ -81,11 +81,43 @@
 }
 
 .collection-view__collection-title {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: 20px;
   font-weight: 700;
   color: #1a1a1a;
   line-height: 1.25;
+}
+
+.collection-view__collection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.collection-view__edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: #fde8dc;
+  color: #e86a24;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.collection-view__edit-btn ion-icon {
+  font-size: 19px;
+}
+
+.collection-view__edit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .collection-view__video-btn {
