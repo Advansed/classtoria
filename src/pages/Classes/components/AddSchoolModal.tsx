@@ -3,7 +3,10 @@ import { useEffect, useState } from 'react';
 import type { DaDataAddressSuggestion } from 'react-dadata';
 import { getDadataToken } from '../../../config/dadata';
 import SchoolLocationField from './SchoolLocationField';
-import { resolveSchoolPlaceFromDadata } from './schoolLocationUtils';
+import {
+  buildSchoolPlaceSuggestionFromStored,
+  resolveSchoolPlaceFromDadata,
+} from './schoolLocationUtils';
 
 type AddSchoolModalProps = {
   open: boolean;
@@ -39,10 +42,14 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({
       return;
     }
     setName(initialName);
-    setLocationSuggestion(undefined);
+    setLocationSuggestion(
+      dadataToken
+        ? buildSchoolPlaceSuggestionFromStored(initialRegion, initialLocation)
+        : undefined,
+    );
     setLocationManual(initialLocation);
     setRegionManual(initialRegion);
-  }, [open, initialName, initialLocation, initialRegion]);
+  }, [open, initialName, initialLocation, initialRegion, dadataToken]);
 
   if (!open) {
     return null;
@@ -93,6 +100,10 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({
             placeholder="Начните вводить город или посёлок"
             token={dadataToken}
             value={locationSuggestion}
+            defaultQuery={
+              locationSuggestion?.value ??
+              [initialRegion.trim(), initialLocation.trim()].filter(Boolean).join(', ')
+            }
             onChange={setLocationSuggestion}
           />
         ) : (

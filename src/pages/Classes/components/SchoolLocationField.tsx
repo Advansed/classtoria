@@ -7,6 +7,7 @@ type SchoolLocationFieldProps = {
   placeholder: string;
   token: string;
   value?: DaDataAddressSuggestion;
+  defaultQuery?: string;
   onChange: (suggestion?: DaDataAddressSuggestion) => void;
 };
 
@@ -16,6 +17,7 @@ const SchoolLocationField: React.FC<SchoolLocationFieldProps> = ({
   placeholder,
   token,
   value,
+  defaultQuery,
   onChange,
 }) => (
   <div className="classes-schools__form-field">
@@ -26,6 +28,7 @@ const SchoolLocationField: React.FC<SchoolLocationFieldProps> = ({
       <AddressSuggestions
         token={token}
         value={value}
+        defaultQuery={defaultQuery}
         onChange={onChange}
         delay={300}
         minChars={2}

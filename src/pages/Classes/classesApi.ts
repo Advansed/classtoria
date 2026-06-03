@@ -1,10 +1,11 @@
 import { api, type ApiResponse } from '../../api';
 import { normalizePhoneDigits } from '../../authCookies';
 import type { UserClass, UserSchool } from '../../Store';
-import type { ClassDetail, GetClassParams } from './types';
+import type { ClassDetail, GetClassParams, PublicEventData } from './types';
 import {
   flattenSchoolClasses,
   parseClassDetail,
+  parsePublicEventData,
   parseSchoolsList,
 } from './utils';
 
@@ -184,6 +185,29 @@ export async function getClass(params: GetClassParams): Promise<ClassDetail | nu
   }
 
   return parseClassDetail(res, fallback);
+}
+
+export type GetEventParams = {
+  eventId: string;
+};
+
+/** `post('get_event', { event_id })` — публичные данные события без токена. */
+export async function getEvent(params: GetEventParams): Promise<PublicEventData | null> {
+  const eventId = params.eventId.trim();
+  if (!eventId) {
+    return null;
+  }
+
+  const res: ApiResponse<unknown> = await api('get_event', { event_id: eventId });
+  if (!res.success) {
+    return null;
+  }
+
+  if (res.data != null) {
+    return parsePublicEventData(res.data);
+  }
+
+  return parsePublicEventData(res);
 }
 
 export type AddMemberParams = {
@@ -503,6 +527,111 @@ export async function addImage(params: AddImageParams): Promise<ApiResponse<unkn
     preview,
     fileurl,
     previewurl,
+  });
+
+  return res;
+}
+
+export type AddVideoParams = {
+  token: string;
+  collectionId: string;
+  imageId: string;
+  file: string;
+  preview: string;
+  fileurl: string;
+  previewurl: string;
+  duration: string;
+};
+
+/** `post('add_video', { token, collection_id, image_id, file, preview, fileurl, previewurl, duration })`. */
+export async function addVideo(params: AddVideoParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const collectionId = params.collectionId.trim();
+  const imageId = params.imageId.trim();
+  const file = params.file.trim();
+  const preview = params.preview.trim();
+  const fileurl = params.fileurl.trim();
+  const previewurl = params.previewurl.trim();
+  const duration = params.duration.trim();
+
+  if (
+    !trimmedToken ||
+    !collectionId ||
+    !imageId ||
+    !file ||
+    !preview ||
+    !fileurl ||
+    !previewurl ||
+    !duration
+  ) {
+    return {
+      success: false,
+      data: null,
+      message: 'Нет данных для загрузки видео',
+    };
+  }
+
+  const res = await api('add_video', {
+    token: trimmedToken,
+    collection_id: collectionId,
+    image_id: imageId,
+    file,
+    preview,
+    fileurl,
+    previewurl,
+    duration,
+  });
+
+  console.log('[collection-upload] add_video (API)', {
+    success: res.success,
+    message: res.message,
+    collection_id: collectionId,
+    image_id: imageId,
+    file,
+    preview,
+    fileurl,
+    previewurl,
+    duration,
+  });
+
+  return res;
+}
+
+export type DelVideoParams = {
+  token: string;
+  collectionId: string;
+  imageId?: string;
+};
+
+/** `post('del_video', { token, collection_id, image_id? })` — удаление видео фотосессии. */
+export async function delVideo(params: DelVideoParams): Promise<ApiResponse<unknown>> {
+  const trimmedToken = params.token.trim();
+  const collectionId = params.collectionId.trim();
+  const imageId = params.imageId?.trim() ?? '';
+
+  if (!trimmedToken || !collectionId) {
+    return {
+      success: false,
+      data: null,
+      message: 'Нет данных для удаления видео',
+    };
+  }
+
+  const body: { token: string; collection_id: string; image_id?: string } = {
+    token: trimmedToken,
+    collection_id: collectionId,
+  };
+  if (imageId) {
+    body.image_id = imageId;
+  }
+
+  const res = await api('del_video', body);
+
+  console.log('[collection-upload] del_video (API)', {
+    success: res.success,
+    message: res.message,
+    collection_id: collectionId,
+    image_id: imageId || undefined,
   });
 
   return res;

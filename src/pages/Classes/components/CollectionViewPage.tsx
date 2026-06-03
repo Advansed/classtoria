@@ -9,7 +9,7 @@ import {
   IonToolbar,
 } from '@ionic/react';
 import { createOutline } from 'ionicons/icons';
-import { Calendar, Crown, MessageCircle, Play } from 'lucide-react';
+import { Calendar, Crown, MessageCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useToast } from '../../../hooks/useToast';
@@ -119,8 +119,10 @@ const CollectionViewPage: React.FC = () => {
     [collection?.images],
   );
 
-  const videoThumb = collection?.videoPreview?.trim() || collection?.videoUrl?.trim() || '';
-  const videoSrc = useClassImageSrc(token, videoThumb);
+  const videoPlayRaw = collection?.videoUrl?.trim() || collection?.videoPreview?.trim() || '';
+  const videoPosterRaw = collection?.videoPreview?.trim() || collection?.videoUrl?.trim() || '';
+  const videoPlaySrc = useClassImageSrc(token, videoPlayRaw);
+  const videoPosterSrc = useClassImageSrc(token, videoPosterRaw);
 
   const baseRoute = useMemo(
     () => ({
@@ -159,10 +161,6 @@ const CollectionViewPage: React.FC = () => {
       imageIndex: index,
     };
     history.push(CLASSES_IMAGE_VIEW, nextState);
-  };
-
-  const openVideo = () => {
-    toast.show('Просмотр видео скоро будет доступен');
   };
 
   const submitEditCollection = async (name: string) => {
@@ -289,19 +287,22 @@ const CollectionViewPage: React.FC = () => {
                 ) : null}
               </div>
 
-              {videoThumb ? (
-                <button type="button" className="collection-view__video-btn" onClick={openVideo}>
-                  <img src={videoSrc} alt="" />
-                  <span className="collection-view__video-overlay">
-                    <Play size={40} fill="currentColor" aria-hidden />
-                    Смотреть видео
-                  </span>
+              {videoPlayRaw ? (
+                <div className="collection-view__video-wrap">
+                  <video
+                    className="collection-view__video-player"
+                    controls
+                    playsInline
+                    preload="metadata"
+                    poster={videoPosterSrc}
+                    src={videoPlaySrc}
+                  />
                   {collection.videoDuration?.trim() ? (
                     <span className="collection-view__video-duration">
                       {collection.videoDuration.trim()}
                     </span>
                   ) : null}
-                </button>
+                </div>
               ) : null}
 
               {photos.length === 0 ? (

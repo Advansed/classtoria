@@ -8,12 +8,12 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
-import { Calendar, ChevronDown, FolderOpen, ImagePlus, Info, Plus, X } from 'lucide-react';
+import { Calendar, ChevronDown, FolderOpen, ImagePlus, Info, Plus, Video, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useToast } from '../../../hooks/useToast';
 import { useStore } from '../../../Store';
-import { addImage } from '../classesApi';
+import { addImage, addVideo, delVideo } from '../classesApi';
 import { useClassesStore } from '../classesStore';
 import { CLASSES_COLLECTION_CREATE, CLASSES_UPLOAD } from '../routes';
 import type {
@@ -29,16 +29,23 @@ import {
 } from './collectionFormUtils';
 import { processCollectionImage } from './collectionImageProcessing';
 import {
+  prepareCollectionVideoUpload,
+  revokeVideoPreviewUrl,
+} from './collectionVideoProcessing';
+import {
   logUploadAction,
   logUploadError,
   logUploadOk,
 } from './collectionUploadLog';
 import {
   buildCollectionImageBasePath,
+  buildCollectionVideoPaths,
   deleteCollectionImage,
+  deleteCollectionVideoFiles,
+  resolveCollectionVideoImageId,
   resolveImagePublicUrl,
   resolveCollectionImageId,
-  uploadJpegToStorage,
+  uploadFileToStorage,
 } from './collectionUploadStorage';
 import { useClassImageSrc } from './useClassImageSrc';
 import './CollectionUploadPage.css';
@@ -62,6 +69,19 @@ const previewSrc = (item: PendingImage): string =>
   item.previewurl?.trim() || item.localPreviewUrl;
 
 const newImageId = (): string => crypto.randomUUID();
+
+type VideoUploadPhase = 'idle' | 'validating' | 'uploading' | 'deleting';
+
+const collectionVideoThumbRaw = (col: ClassCollection): string => {
+  const preview = col.videoPreview?.trim();
+  if (preview) {
+    return preview;
+  }
+  return col.videoUrl?.trim() || '';
+};
+
+const hasCollectionVideo = (col: ClassCollection | null): boolean =>
+  Boolean(col && (col.videoUrl?.trim() || col.videoPreview?.trim()));
 
 const existingPreviewRaw = (img: ClassImage): string =>
   img.preview.trim() || img.file.trim();
@@ -153,10 +173,14 @@ const CollectionUploadPage: React.FC = () => {
     {},
   );
   const [processing, setProcessing] = useState(false);
+  const [videoPhase, setVideoPhase] = useState<VideoUploadPhase>('idle');
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoStatusText, setVideoStatusText] = useState('');
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [removedImageIds, setRemovedImageIds] = useState<Set<string>>(() => new Set());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const collectionPickerRef = useRef<HTMLDivElement>(null);
   const pendingByCollectionRef = useRef(pendingByCollection);
   pendingByCollectionRef.current = pendingByCollection;
@@ -246,6 +270,13 @@ const CollectionUploadPage: React.FC = () => {
   }, [selectedCollection?.images, removedImageIds]);
 
   const hasPreviewContent = existingImages.length > 0 || pendingItems.length > 0;
+  const collectionHasVideo = hasCollectionVideo(selectedCollection);
+  const existingVideoThumbRaw = selectedCollection
+    ? collectionVideoThumbRaw(selectedCollection)
+    : '';
+  const existingVideoThumbSrc = useClassImageSrc(token, existingVideoThumbRaw);
+  const videoBusy = videoPhase !== 'idle';
+  const busy = processing || videoBusy || Boolean(deletingKey);
 
   const patchPending = useCallback(
     (collectionId: string, updater: (list: PendingImage[]) => PendingImage[]) => {
@@ -327,11 +358,11 @@ const CollectionUploadPage: React.FC = () => {
     });
 
     logUploadAction('фото: file.jpg — upload_url + PUT', { path: filePath });
-    const publicFileUrl = await uploadJpegToStorage(token!, filePath, item.file);
+    const publicFileUrl = await uploadFileToStorage(token!, filePath, item.file);
     logUploadOk('фото: file.jpg', { path: filePath, fileurl: publicFileUrl || '(пусто)' });
 
     logUploadAction('фото: preview.jpg — upload_url + PUT', { path: previewPath });
-    const publicPreviewUrl = await uploadJpegToStorage(token!, previewPath, item.preview);
+    const publicPreviewUrl = await uploadFileToStorage(token!, previewPath, item.preview);
     logUploadOk('фото: preview.jpg', { path: previewPath, previewurl: publicPreviewUrl || '(пусто)' });
 
     logUploadAction('фото: add_image', {
@@ -403,6 +434,141 @@ const CollectionUploadPage: React.FC = () => {
     }
   };
 
+  const processAndUploadVideo = async (raw: File) => {
+    if (!token?.trim() || !classId || !eventId || !selectedCollectionId) {
+      toast.error('Нет данных для загрузки видео');
+      return;
+    }
+
+    setVideoPhase('validating');
+    setVideoProgress(0);
+    setVideoStatusText('Проверка видео…');
+    setProcessing(true);
+
+    let localPreview = '';
+
+    try {
+      const processed = await prepareCollectionVideoUpload(raw);
+
+      localPreview = processed.previewUrl;
+      setVideoPhase('uploading');
+      setVideoStatusText('Загрузка в облако…');
+      setVideoProgress(40);
+
+      const videoImageId = newImageId();
+      const paths = buildCollectionVideoPaths(
+        classId,
+        eventId,
+        selectedCollectionId,
+        videoImageId,
+        processed.videoExtension,
+      );
+      const fileurl = await uploadFileToStorage(token, paths.video, processed.video);
+      setVideoProgress(88);
+      const previewurl = await uploadFileToStorage(token, paths.preview, processed.preview);
+      setVideoProgress(95);
+
+      const res = await addVideo({
+        token,
+        collectionId: selectedCollectionId,
+        imageId: paths.imageId,
+        file: paths.video,
+        preview: paths.preview,
+        fileurl,
+        previewurl,
+        duration: processed.durationLabel,
+      });
+
+      if (!res.success) {
+        throw new Error(res.message?.trim() || 'Не удалось сохранить видео');
+      }
+
+      setVideoProgress(100);
+      setVideoStatusText('Видео загружено');
+      toast.success(res.message?.trim() || 'Видео загружено');
+      await reloadClass();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Не удалось загрузить видео';
+      logUploadError('видео', message);
+      toast.error(message);
+      setVideoStatusText(message);
+    } finally {
+      revokeVideoPreviewUrl(localPreview);
+      setVideoPhase('idle');
+      setVideoProgress(0);
+      setVideoStatusText('');
+      setProcessing(false);
+      if (videoInputRef.current) {
+        videoInputRef.current.value = '';
+      }
+    }
+  };
+
+  const onVideoSelected = async (fileList: FileList | null) => {
+    if (!canEditEvent) {
+      toast.warning('Событие открыто только для просмотра');
+      return;
+    }
+    const raw = fileList?.[0];
+    if (!raw) {
+      return;
+    }
+    if (!selectedCollection || !selectedCollectionId) {
+      toast.warning('Выберите коллекцию из списка');
+      return;
+    }
+    if (busy) {
+      return;
+    }
+    await processAndUploadVideo(raw);
+  };
+
+  const deleteCollectionVideo = async () => {
+    if (!canEditEvent || !token?.trim() || !selectedCollectionId || !classId || !eventId) {
+      return;
+    }
+    if (busy) {
+      return;
+    }
+
+    setVideoPhase('deleting');
+    setProcessing(true);
+    setVideoStatusText('Удаление видео…');
+
+    try {
+      const videoImageId = selectedCollection
+        ? resolveCollectionVideoImageId(selectedCollection)
+        : '';
+      const paths = videoImageId
+        ? buildCollectionVideoPaths(classId, eventId, selectedCollectionId, videoImageId)
+        : null;
+      const res = await delVideo({
+        token,
+        collectionId: selectedCollectionId,
+        ...(videoImageId ? { imageId: videoImageId } : {}),
+      });
+      if (!res.success) {
+        throw new Error(res.message?.trim() || 'Не удалось удалить видео');
+      }
+      if (paths) {
+        try {
+          await deleteCollectionVideoFiles(token, paths);
+        } catch {
+          // файлы могли быть уже удалены на сервере
+        }
+      }
+      toast.success('Видео удалено');
+      await reloadClass();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Не удалось удалить видео';
+      toast.error(message);
+    } finally {
+      setVideoPhase('idle');
+      setVideoStatusText('');
+      setProcessing(false);
+    }
+  };
+
   const onFilesSelected = async (fileList: FileList | null) => {
     if (!canEditEvent) {
       toast.warning('Событие открыто только для просмотра');
@@ -426,6 +592,11 @@ const CollectionUploadPage: React.FC = () => {
 
     if (!classId || !eventId) {
       toast.error('Нет class_id или event_id');
+      return;
+    }
+
+    if (videoBusy) {
+      toast.warning('Дождитесь завершения загрузки видео');
       return;
     }
 
@@ -551,11 +722,14 @@ const CollectionUploadPage: React.FC = () => {
       selectedCollection &&
       selectedCollectionId &&
       canEditEvent &&
-      !processing &&
-      !deletingKey,
+      !busy,
   );
 
-  const previewBusy = processing || Boolean(deletingKey);
+  const canManageVideo = Boolean(
+    classId && eventId && selectedCollection && selectedCollectionId && canEditEvent && !busy,
+  );
+
+  const previewBusy = busy;
 
   return (
     <IonPage>
@@ -568,7 +742,7 @@ const CollectionUploadPage: React.FC = () => {
               className="event-upload__back"
             />
           </IonButtons>
-          <IonTitle className="event-upload__toolbar-title">Загрузка фото</IonTitle>
+          <IonTitle className="event-upload__toolbar-title">Загрузка материалов</IonTitle>
         </IonToolbar>
       </IonHeader>
 
@@ -702,13 +876,78 @@ const CollectionUploadPage: React.FC = () => {
                       ? 'Нужен id коллекции для загрузки фото.'
                       : !classId || !eventId
                         ? 'Нет id класса или события — вернитесь и выберите событие снова.'
-                        : ''}
+                        : videoBusy
+                          ? 'Дождитесь завершения обработки видео.'
+                          : ''}
                 </p>
               ) : (
                 <p className="event-upload__hint" style={{ marginTop: 8 }}>
                   Фото загружаются в выбранную коллекцию сразу после выбора файлов.
                 </p>
               )}
+
+              <div className="collection-upload__video-section">
+                <p className="event-upload__label">Видеоролик фотосессии</p>
+                <p className="collection-upload__video-hint">
+                  До 1 минуты. Файл загружается без сжатия в исходном формате.
+                </p>
+
+                {collectionHasVideo && existingVideoThumbRaw ? (
+                  <div className="collection-upload__video-existing">
+                    <img src={existingVideoThumbSrc} alt="" loading="lazy" />
+                    {selectedCollection?.videoDuration?.trim() ? (
+                      <span className="collection-upload__video-duration">
+                        {selectedCollection.videoDuration.trim()}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {videoBusy ? (
+                  <div className="collection-upload__video-progress" role="status">
+                    <div className="collection-upload__video-progress-bar">
+                      <span
+                        className="collection-upload__video-progress-fill"
+                        style={{ width: `${videoProgress}%` }}
+                      />
+                    </div>
+                    <p className="collection-upload__video-progress-text">
+                      {videoStatusText || 'Обработка…'}
+                      {videoProgress > 0 ? ` (${videoProgress}%)` : ''}
+                    </p>
+                  </div>
+                ) : null}
+
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="collection-upload__file-input"
+                  onChange={(e) => void onVideoSelected(e.target.files)}
+                />
+
+                <div className="collection-upload__video-actions">
+                  <button
+                    type="button"
+                    className="collection-upload__add-video-btn"
+                    disabled={!canManageVideo}
+                    onClick={() => videoInputRef.current?.click()}
+                  >
+                    <Video size={FIELD_ICON_SIZE} aria-hidden />
+                    {collectionHasVideo ? 'Заменить видео' : 'Добавить видео'}
+                  </button>
+                  {collectionHasVideo ? (
+                    <button
+                      type="button"
+                      className="collection-upload__delete-video-btn"
+                      disabled={!canManageVideo}
+                      onClick={() => void deleteCollectionVideo()}
+                    >
+                      Удалить
+                    </button>
+                  ) : null}
+                </div>
+              </div>
 
               <div className="collection-upload__preview-section">
                 <p className="event-upload__label">Предпросмотр</p>

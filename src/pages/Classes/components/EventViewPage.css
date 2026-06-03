@@ -24,6 +24,21 @@
   font-size: 22px;
 }
 
+.event-view__toolbar-auth {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-right: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #e86a24;
+  cursor: pointer;
+}
+
 .event-view {
   --background: #f2f2f2;
 }
@@ -107,6 +122,13 @@
 .event-view__edit-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.event-view__context {
+  margin: 0 48px 8px 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #8a8580;
 }
 
 .event-view__title {
@@ -268,6 +290,11 @@
 .event-view__upload-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.event-view__upload-btn--auth {
+  background: #fff;
+  border: 1px solid #e86a24;
 }
 
 .event-view__comments-card {

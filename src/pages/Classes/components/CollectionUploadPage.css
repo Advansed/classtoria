@@ -42,6 +42,118 @@
   display: none;
 }
 
+.collection-upload__video-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.collection-upload__video-hint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #8a8580;
+}
+
+.collection-upload__video-existing {
+  position: relative;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: #1a1a1a;
+}
+
+.collection-upload__video-existing img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.collection-upload__video-duration {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.collection-upload__video-progress {
+  margin-bottom: 12px;
+}
+
+.collection-upload__video-progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: #e8e4df;
+  overflow: hidden;
+}
+
+.collection-upload__video-progress-fill {
+  display: block;
+  height: 100%;
+  background: #e86a24;
+  transition: width 0.2s ease;
+}
+
+.collection-upload__video-progress-text {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #6b6560;
+}
+
+.collection-upload__video-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.collection-upload__add-video-btn {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1px dashed #e86a24;
+  border-radius: 12px;
+  background: #fde8dc;
+  color: #e86a24;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.collection-upload__add-video-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.collection-upload__delete-video-btn {
+  padding: 12px 16px;
+  border: 1px solid #e8e4df;
+  border-radius: 12px;
+  background: #fff;
+  color: #6b6560;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.collection-upload__delete-video-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .collection-upload__preview-section {
   margin-top: 16px;
 }

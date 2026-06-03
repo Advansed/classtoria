@@ -6,6 +6,9 @@ import Page from './pages/Page';
 import { CLASSES_CABINET, CLASSES_WHITELIST } from './pages/Classes/routes';
 import AuthPage from './pages/AuthPage/AuthPage';
 import PersonalPage from './pages/PersonalPage/PersonalPage';
+import PublicCollectionPage from './pages/PublicEvent/PublicCollectionPage';
+import PublicEventPage from './pages/PublicEvent/PublicEventPage';
+import PublicImagePage from './pages/PublicEvent/PublicImagePage';
 import StartPage from './pages/StartPage/StartPage';
 import './App.css';
 
@@ -26,6 +29,17 @@ const App: React.FC = () => {
               <Route path="/start" exact={true}>
                 <StartPage />
               </Route>
+              <Route
+                path="/event/:eventId/collection/:collectionId/photo/:imageId"
+                exact={true}
+                component={PublicImagePage}
+              />
+              <Route
+                path="/event/:eventId/collection/:collectionId"
+                exact={true}
+                component={PublicCollectionPage}
+              />
+              <Route path="/event/:eventId" exact={true} component={PublicEventPage} />
               <Route path="/personal">
                 <PrivateRoute>
                   <PersonalPage />

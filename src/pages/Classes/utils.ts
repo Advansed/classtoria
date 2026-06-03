@@ -9,6 +9,7 @@ import type {
   ClassStats,
   ClassTeacher,
   EventComment,
+  PublicEventData,
 } from './types';
 
 export const readStr = (value: unknown): string =>
@@ -103,6 +104,9 @@ export const parseClassCollection = (row: unknown): ClassCollection | null => {
     o.video_preview ?? o.videoPreview ?? o.video_thumb ?? o.videoThumb,
   );
   const videoDuration = readStr(o.video_duration ?? o.videoDuration ?? o.duration);
+  const videoImageId = readStr(
+    o.video_image_id ?? o.videoImageId ?? o.video_id ?? o.videoId,
+  );
 
   return {
     ...(id ? { id } : {}),
@@ -115,6 +119,7 @@ export const parseClassCollection = (row: unknown): ClassCollection | null => {
     ...(videoUrl ? { videoUrl } : {}),
     ...(videoPreview ? { videoPreview } : {}),
     ...(videoDuration ? { videoDuration } : {}),
+    ...(videoImageId ? { videoImageId } : {}),
   };
 };
 
@@ -724,4 +729,30 @@ export const upsertClassInList = (list: ClassDetail[], detail: ClassDetail): Cla
   const next = [...list];
   next[idx] = detail;
   return next;
+};
+
+/** Ответ `get_event`: событие и опционально контекст класса/школы. */
+export const parsePublicEventData = (raw: unknown): PublicEventData | null => {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const o = raw as Record<string, unknown>;
+  const eventRaw = o.event ?? o.Event ?? o.data ?? raw;
+  const event = parseClassEvent(eventRaw);
+  if (!event) {
+    return null;
+  }
+
+  const classId = readStr(o.class_id ?? o.classId);
+  const className = readStr(o.class_name ?? o.className);
+  const schoolId = readStr(o.school_id ?? o.schoolId);
+  const schoolName = readStr(o.school_name ?? o.schoolName);
+
+  return {
+    event,
+    ...(classId ? { classId } : {}),
+    ...(className ? { className } : {}),
+    ...(schoolId ? { schoolId } : {}),
+    ...(schoolName ? { schoolName } : {}),
+  };
 };

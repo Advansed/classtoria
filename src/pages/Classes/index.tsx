@@ -23,4 +23,11 @@ export {
   CLASSES_IMAGE_VIEW,
   CLASSES_UPLOAD,
   CLASSES_WHITELIST,
+  PUBLIC_EVENT_VIEW,
+  PUBLIC_COLLECTION_VIEW,
+  PUBLIC_IMAGE_VIEW,
+  buildEventShareUrl,
+  publicCollectionPath,
+  publicEventPath,
+  publicImagePath,
 } from './routes';

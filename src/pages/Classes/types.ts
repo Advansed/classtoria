@@ -36,6 +36,8 @@ export type ClassCollection = {
   videoUrl?:              string;
   videoPreview?:          string;
   videoDuration?:         string;
+  /** `image_id` видео в хранилище (если отдаёт API). */
+  videoImageId?:          string;
 };
 
 /** Событие класса. */
@@ -149,3 +151,12 @@ export type GetClassParams = {
 };
 
 export type OpenClassParams = GetClassParams;
+
+/** Данные события для публичной страницы (`get_event`). */
+export type PublicEventData = {
+  event: ClassEvent;
+  classId?: string;
+  className?: string;
+  schoolId?: string;
+  schoolName?: string;
+};

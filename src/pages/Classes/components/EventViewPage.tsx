@@ -26,7 +26,7 @@ import { useToast } from '../../../hooks/useToast';
 import { useStore } from '../../../Store';
 import { editEvent } from '../classesApi';
 import { useClassesStore } from '../classesStore';
-import { CLASSES_CABINET, CLASSES_COLLECTION_UPLOAD, CLASSES_COLLECTION_VIEW } from '../routes';
+import { CLASSES_CABINET, CLASSES_COLLECTION_UPLOAD, CLASSES_COLLECTION_VIEW, buildEventShareUrl } from '../routes';
 import type {
   ClassCollection,
   ClassEvent,
@@ -126,7 +126,6 @@ const EventViewPage: React.FC = () => {
   const [commentDraft, setCommentDraft] = useState('');
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [submittingEditName, setSubmittingEditName] = useState(false);
-
   useEffect(() => {
     if (!classId || !token?.trim()) {
       return;
@@ -243,23 +242,18 @@ const EventViewPage: React.FC = () => {
     history.push(CLASSES_COLLECTION_UPLOAD, uploadState);
   };
 
-  const shareEvent = async () => {
-    if (!event) {
+  const copyEventLink = async () => {
+    const id = event?.id?.trim() ?? '';
+    if (!id) {
+      toast.warning('У события нет id — обновите данные класса');
       return;
     }
-    const text = [event.title, event.date, event.description].filter(Boolean).join('\n');
+    const url = buildEventShareUrl(id);
     try {
-      if (typeof navigator.share === 'function') {
-        await navigator.share({ title: event.title, text });
-        return;
-      }
-      await navigator.clipboard.writeText(text);
-      toast.success('Описание события скопировано');
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
-      toast.error('Не удалось поделиться событием');
+      await navigator.clipboard.writeText(url);
+      toast.success('Ссылка скопирована');
+    } catch {
+      toast.error('Не удалось скопировать ссылку');
     }
   };
 
@@ -332,8 +326,8 @@ const EventViewPage: React.FC = () => {
                   <button
                     type="button"
                     className="event-view__share-btn"
-                    onClick={() => void shareEvent()}
-                    aria-label="Поделиться событием"
+                    onClick={() => void copyEventLink()}
+                    aria-label="Скопировать ссылку на событие"
                   >
                     <Share2 size={16} aria-hidden />
                   </button>
