@@ -8,27 +8,23 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
-import { Calendar, Crown, MessageCircle } from 'lucide-react';
-import { useMemo } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { Calendar, Crown, MessageCircle, Video } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { collectionLabel } from '../Classes/components/collectionFormUtils';
 import {
+  collectionMediaItems,
   formatEventMetaLine,
   imageStatsLabel,
   imageThumbRaw,
+  isCollectionVideo,
 } from '../Classes/components/classViewUtils';
+import CollectionMediaModal from '../Classes/components/CollectionMediaModal';
 import { useClassImageSrc } from '../Classes/components/useClassImageSrc';
 import '../Classes/components/CollectionViewPage.css';
-import {
-  publicEventPath,
-  publicImagePath,
-} from '../Classes/routes';
+import { publicEventPath } from '../Classes/routes';
 import type { ClassImage } from '../Classes/types';
-import {
-  findPublicCollection,
-  resolvePublicImageId,
-  usePublicEvent,
-} from './usePublicEvent';
+import { findPublicCollection, usePublicEvent } from './usePublicEvent';
 
 const ICON_SIZE = 20;
 
@@ -39,10 +35,21 @@ type PhotoTileProps = {
 
 const PhotoTile: React.FC<PhotoTileProps> = ({ image, onOpen }) => {
   const src = useClassImageSrc(null, imageThumbRaw(image));
+  const isVideo = isCollectionVideo(image);
 
   return (
-    <button type="button" className="collection-view__photo-btn" onClick={onOpen}>
+    <button
+      type="button"
+      className="collection-view__photo-btn"
+      aria-label={isVideo ? 'Открыть видео' : 'Открыть фото'}
+      onClick={onOpen}
+    >
       <img src={src} alt="" loading="lazy" />
+      {isVideo ? (
+        <span className="collection-view__photo-play" aria-hidden>
+          <Video size={28} />
+        </span>
+      ) : null}
       {image.featured ? (
         <span className="collection-view__photo-crown" aria-label="Избранное">
           <Crown size={16} aria-hidden />
@@ -57,7 +64,6 @@ const PhotoTile: React.FC<PhotoTileProps> = ({ image, onOpen }) => {
 };
 
 const PublicCollectionPage: React.FC = () => {
-  const history = useHistory();
   const { eventId: eventIdParam, collectionId: collectionIdParam } = useParams<{
     eventId: string;
     collectionId: string;
@@ -65,6 +71,7 @@ const PublicCollectionPage: React.FC = () => {
   const eventId = eventIdParam?.trim() ?? '';
   const collectionId = collectionIdParam?.trim() ?? '';
   const { loading, error, data, event } = usePublicEvent(eventId);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const collection = useMemo(
     () => findPublicCollection(event, collectionId),
@@ -74,26 +81,11 @@ const PublicCollectionPage: React.FC = () => {
   const schoolName = data?.schoolName?.trim() || '';
   const className = data?.className?.trim() || '—';
   const collectionTitle = collection ? collectionLabel(collection) : '—';
-  const photos = useMemo(
-    () => collection?.images.filter((img) => imageThumbRaw(img)) ?? [],
-    [collection?.images],
+  const mediaItems = useMemo(
+    () =>
+      collectionMediaItems(collection).filter((img) => imageThumbRaw(img)),
+    [collection],
   );
-
-  const videoPlayRaw = collection?.videoUrl?.trim() || collection?.videoPreview?.trim() || '';
-  const videoPosterRaw = collection?.videoPreview?.trim() || collection?.videoUrl?.trim() || '';
-  const videoPlaySrc = useClassImageSrc(null, videoPlayRaw);
-  const videoPosterSrc = useClassImageSrc(null, videoPosterRaw);
-
-  const openImage = (image: ClassImage, index: number) => {
-    const path = publicImagePath(
-      eventId,
-      collectionId,
-      resolvePublicImageId(image, index),
-    );
-    if (path) {
-      history.push(path);
-    }
-  };
 
   return (
     <IonPage>
@@ -140,33 +132,17 @@ const PublicCollectionPage: React.FC = () => {
 
               <h2 className="collection-view__collection-title">{collectionTitle}</h2>
 
-              {videoPlayRaw ? (
-                <div className="collection-view__video-wrap">
-                  <video
-                    className="collection-view__video-player"
-                    controls
-                    playsInline
-                    preload="metadata"
-                    poster={videoPosterSrc}
-                    src={videoPlaySrc}
-                  />
-                  {collection.videoDuration?.trim() ? (
-                    <span className="collection-view__video-duration">
-                      {collection.videoDuration.trim()}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {photos.length === 0 ? (
-                <p className="collection-view__empty">В этой фотосессии пока нет фотографий.</p>
+              {mediaItems.length === 0 ? (
+                <p className="collection-view__empty">
+                  В этой фотосессии пока нет фотографий и видео.
+                </p>
               ) : (
                 <div className="collection-view__grid">
-                  {photos.map((img, index) => (
+                  {mediaItems.map((img, index) => (
                     <PhotoTile
                       key={img.imageId ?? `photo-${index}-${imageThumbRaw(img)}`}
                       image={img}
-                      onOpen={() => openImage(img, index)}
+                      onOpen={() => setViewerIndex(index)}
                     />
                   ))}
                 </div>
@@ -174,6 +150,14 @@ const PublicCollectionPage: React.FC = () => {
             </>
           ) : null}
         </div>
+        <CollectionMediaModal
+          open={viewerIndex != null && mediaItems.length > 0}
+          items={mediaItems}
+          index={viewerIndex ?? 0}
+          token={null}
+          onClose={() => setViewerIndex(null)}
+          onIndexChange={setViewerIndex}
+        />
       </IonContent>
     </IonPage>
   );

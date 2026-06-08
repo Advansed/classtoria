@@ -136,64 +136,6 @@ export const buildCollectionImageBasePath = (
   imageId: string,
 ): string => `${classId.trim()}/${eventId.trim()}/${collectionId.trim()}/${imageId.trim()}`;
 
-export type CollectionVideoPaths = {
-  imageId: string;
-  video: string;
-  preview: string;
-};
-
-export const buildCollectionVideoPaths = (
-  classId: string,
-  eventId: string,
-  collectionId: string,
-  imageId: string,
-  videoExtension = 'mp4',
-): CollectionVideoPaths => {
-  const id = imageId.trim();
-  const ext = videoExtension.trim().replace(/^\./, '').toLowerCase() || 'mp4';
-  const base = buildCollectionImageBasePath(classId, eventId, collectionId, id);
-  return {
-    imageId: id,
-    video: `${base}/video.${ext}`,
-    preview: `${base}/preview.jpg`,
-  };
-};
-
-/** `image_id` видео из поля API или из пути `.../collectionId/imageId/video.*`. */
-export const resolveCollectionVideoImageId = (col: {
-  videoImageId?: string;
-  videoUrl?: string;
-  videoPreview?: string;
-}): string => {
-  const fromField = col.videoImageId?.trim() ?? '';
-  if (fromField) {
-    return fromField;
-  }
-
-  for (const raw of [col.videoUrl, col.videoPreview]) {
-    if (!raw?.trim()) {
-      continue;
-    }
-    const key = normalizeStoredImageKey(raw);
-    const segments = key.split('/').filter(Boolean);
-    const last = segments[segments.length - 1]?.toLowerCase() ?? '';
-    if (segments.length >= 5 && last.startsWith('video.')) {
-      const id = segments[3];
-      if (id) {
-        return id;
-      }
-    }
-    if (segments.length >= 4 && segments[segments.length - 1].toLowerCase() === 'preview.jpg') {
-      const id = segments[3];
-      if (id) {
-        return id;
-      }
-    }
-  }
-
-  return '';
-};
-
 const pairStoragePath = (primary: string, siblingSuffix: string, ownSuffix: string): string => {
   const trimmed = primary.trim();
   if (!trimmed) {
@@ -368,10 +310,3 @@ export const uploadFileToStorage = async (
 
 /** @deprecated Используйте {@link uploadFileToStorage}. */
 export const uploadJpegToStorage = uploadFileToStorage;
-
-export const deleteCollectionVideoFiles = async (
-  token: string,
-  paths: CollectionVideoPaths,
-): Promise<void> => {
-  await deleteImageFilesFromStorage(token, [paths.video, paths.preview]);
-};

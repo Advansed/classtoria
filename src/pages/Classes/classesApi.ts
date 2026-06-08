@@ -487,9 +487,13 @@ export type AddImageParams = {
   fileurl: string;
   /** public_url после загрузки preview.jpg. */
   previewurl: string;
+  /** `video` — участник коллекции с видеофайлом. */
+  mediaType?: 'image' | 'video';
+  /** Длительность видео, например `1:23`. */
+  duration?: string;
 };
 
-/** `post('add_image', { token, collection_id, image_id, file, preview })`. */
+/** `post('add_image', { token, collection_id, image_id, file, preview, type?, duration? })`. */
 export async function addImage(params: AddImageParams): Promise<ApiResponse<unknown>> {
   const trimmedToken = params.token.trim();
   const collectionId = params.collectionId.trim();
@@ -499,16 +503,18 @@ export async function addImage(params: AddImageParams): Promise<ApiResponse<unkn
 
   const fileurl = params.fileurl.trim();
   const previewurl = params.previewurl.trim();
+  const mediaType = params.mediaType;
+  const duration = params.duration?.trim() ?? '';
 
   if (!trimmedToken || !collectionId || !imageId || !file || !preview || !fileurl || !previewurl) {
     return {
       success: false,
       data: null,
-      message: 'Нет данных для загрузки фото',
+      message: 'Нет данных для загрузки материала',
     };
   }
 
-  const res = await api('add_image', {
+  const body: Record<string, string> = {
     token: trimmedToken,
     collection_id: collectionId,
     image_id: imageId,
@@ -516,7 +522,15 @@ export async function addImage(params: AddImageParams): Promise<ApiResponse<unkn
     preview,
     fileurl,
     previewurl,
-  });
+  };
+  if (mediaType === 'video') {
+    body.type = 'video';
+    if (duration) {
+      body.duration = duration;
+    }
+  }
+
+  const res = await api('add_image', body);
 
   console.log('[collection-upload] add_image (API)', {
     success: res.success,

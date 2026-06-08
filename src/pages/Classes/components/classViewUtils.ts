@@ -36,12 +36,49 @@ export const findCollectionInEvent = (
   return undefined;
 };
 
+export const isCollectionVideo = (img: ClassImage): boolean => {
+  if (img.isVideo) {
+    return true;
+  }
+  const file = img.file.trim();
+  return /\/video\.[a-z0-9]{2,5}$/i.test(file);
+};
+
+export const imageThumbRaw = (img: ClassImage): string =>
+  img.preview.trim() || img.file.trim();
+
+export const imageFullRaw = (img: ClassImage): string =>
+  img.file.trim() || img.preview.trim();
+
+/** Все материалы коллекции, включая устаревшее одиночное видео на коллекции. */
+export const collectionMediaItems = (collection: ClassCollection | undefined): ClassImage[] => {
+  if (!collection) {
+    return [];
+  }
+  const images = collection.images ?? [];
+  const legacyVideoUrl = collection.videoUrl?.trim();
+  if (!legacyVideoUrl || images.some(isCollectionVideo)) {
+    return images;
+  }
+  return [
+    ...images,
+    {
+      date: collection.date,
+      file: legacyVideoUrl,
+      preview: collection.videoPreview?.trim() || legacyVideoUrl,
+      isVideo: true,
+      ...(collection.videoDuration?.trim() ? { duration: collection.videoDuration.trim() } : {}),
+      ...(collection.videoImageId?.trim() ? { imageId: collection.videoImageId.trim() } : {}),
+    },
+  ];
+};
+
 export const findImageInCollection = (
   collection: ClassCollection | undefined,
   imageId: string,
   imageIndex: number | undefined,
 ): ClassImage | undefined => {
-  const images = collection?.images ?? [];
+  const images = collectionMediaItems(collection);
   if (imageId) {
     const byId = images.find((img) => img.imageId === imageId);
     if (byId) {
@@ -54,12 +91,6 @@ export const findImageInCollection = (
   return undefined;
 };
 
-export const imageThumbRaw = (img: ClassImage): string =>
-  img.preview.trim() || img.file.trim();
-
-export const imageFullRaw = (img: ClassImage): string =>
-  img.file.trim() || img.preview.trim();
-
 export const formatEventMetaLine = (
   eventDate: string,
   schoolName: string,
@@ -70,6 +101,9 @@ export const formatEventMetaLine = (
 };
 
 export const imageStatsLabel = (img: ClassImage): string => {
+  if (isCollectionVideo(img) && img.duration?.trim()) {
+    return img.duration.trim();
+  }
   const comments = img.commentsCount ?? 0;
   const tagged = img.taggedCount ?? 0;
   if (comments > 0 || tagged > 0) {

@@ -1,6 +1,8 @@
-# Контракт API для видео фотосессии
+# Контракт API для видео в коллекции
 
-Фронтенд вызывает эти методы после загрузки файлов в S3 через `upload_url`.
+Видео — **участник коллекции** наравне с фото: отдельный элемент в `collection.images[]` с `type: 'video'`. Отдельного «видеоролика фотосессии» на уровне коллекции больше нет.
+
+Фронтенд регистрирует видео через **`add_image`** после загрузки файлов в S3 через `upload_url`.
 
 ## Пути в S3
 
@@ -14,7 +16,9 @@
 
 На клиенте: только проверка длительности **не больше 1 минуты**, без перекодирования.
 
-## `add_video`
+## `add_image` (видео)
+
+Те же поля, что и для фото, плюс тип и длительность:
 
 ```json
 {
@@ -25,20 +29,23 @@
   "preview": "{classId}/{eventId}/{collectionId}/{imageId}/preview.jpg",
   "fileurl": "https://...",
   "previewurl": "https://...",
+  "type": "video",
   "duration": "1:23"
 }
 ```
 
-Ответ: `{ "success": true }`. Поля коллекции в `get_class` / `get_event`: `video_url`, `video_preview`, `video_duration`, опционально `video_image_id`.
+Ответ: `{ "success": true }`.
 
-## `del_video`
+В `get_class` / `get_event` видео возвращается в `collection.images[]`:
 
-```json
-{
-  "token": "...",
-  "collection_id": "...",
-  "image_id": "..."
-}
-```
+- `type: "video"` (или путь `.../video.{ext}`)
+- `file`, `preview`, `image_id`
+- опционально `duration`
 
-Удаляет привязку видео к коллекции (файлы в S3 фронт удаляет через `del_files3`).
+## Удаление
+
+Как у фото: `del_image` + `del_files3` для путей в хранилище.
+
+## Устаревшее (legacy)
+
+Ранее использовались `add_video` / `del_video` и поля коллекции `video_url`, `video_preview`, `video_duration`. Фронтенд по-прежнему **читает** legacy-поля для старых данных, но **не пишет** в них.

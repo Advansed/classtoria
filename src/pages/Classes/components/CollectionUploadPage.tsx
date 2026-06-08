@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useToast } from '../../../hooks/useToast';
 import { useStore } from '../../../Store';
-import { addImage, addVideo, delVideo } from '../classesApi';
+import { addImage } from '../classesApi';
 import { useClassesStore } from '../classesStore';
 import { CLASSES_COLLECTION_CREATE, CLASSES_UPLOAD } from '../routes';
 import type {
@@ -37,12 +37,10 @@ import {
   logUploadError,
   logUploadOk,
 } from './collectionUploadLog';
+import { collectionMediaItems, isCollectionVideo } from './classViewUtils';
 import {
   buildCollectionImageBasePath,
-  buildCollectionVideoPaths,
   deleteCollectionImage,
-  deleteCollectionVideoFiles,
-  resolveCollectionVideoImageId,
   resolveImagePublicUrl,
   resolveCollectionImageId,
   uploadFileToStorage,
@@ -53,35 +51,25 @@ import './EventUploadPage.css';
 
 const FIELD_ICON_SIZE = 20;
 
-type PendingImage = {
+type PendingMedia = {
   localId: string;
   imageId: string;
   localPreviewUrl: string;
   file: File;
   preview: File;
+  mediaType: 'image' | 'video';
+  videoExtension?: string;
+  duration?: string;
   status: 'uploading' | 'done' | 'error';
   error?: string;
   fileurl?: string;
   previewurl?: string;
 };
 
-const previewSrc = (item: PendingImage): string =>
+const previewSrc = (item: PendingMedia): string =>
   item.previewurl?.trim() || item.localPreviewUrl;
 
 const newImageId = (): string => crypto.randomUUID();
-
-type VideoUploadPhase = 'idle' | 'validating' | 'uploading' | 'deleting';
-
-const collectionVideoThumbRaw = (col: ClassCollection): string => {
-  const preview = col.videoPreview?.trim();
-  if (preview) {
-    return preview;
-  }
-  return col.videoUrl?.trim() || '';
-};
-
-const hasCollectionVideo = (col: ClassCollection | null): boolean =>
-  Boolean(col && (col.videoUrl?.trim() || col.videoPreview?.trim()));
 
 const existingPreviewRaw = (img: ClassImage): string =>
   img.preview.trim() || img.file.trim();
@@ -107,6 +95,7 @@ const findEvent = (
 type ExistingPreviewTileProps = {
   previewRaw: string;
   token: string | null;
+  isVideo: boolean;
   deleting: boolean;
   disabled: boolean;
   onDelete: () => void;
@@ -115,6 +104,7 @@ type ExistingPreviewTileProps = {
 const ExistingPreviewTile: React.FC<ExistingPreviewTileProps> = ({
   previewRaw,
   token,
+  isVideo,
   deleting,
   disabled,
   onDelete,
@@ -124,6 +114,11 @@ const ExistingPreviewTile: React.FC<ExistingPreviewTileProps> = ({
   return (
     <div className="collection-upload__preview-item collection-upload__preview-item--existing">
       <img src={src} alt="" loading="lazy" />
+      {isVideo ? (
+        <span className="collection-upload__preview-play" aria-hidden>
+          <Video size={22} />
+        </span>
+      ) : null}
       <button
         type="button"
         className="collection-upload__preview-remove"
@@ -169,13 +164,10 @@ const CollectionUploadPage: React.FC = () => {
 
   const [selectedCollectionKey, setSelectedCollectionKey] = useState('');
   const [collectionListOpen, setCollectionListOpen] = useState(false);
-  const [pendingByCollection, setPendingByCollection] = useState<Record<string, PendingImage[]>>(
+  const [pendingByCollection, setPendingByCollection] = useState<Record<string, PendingMedia[]>>(
     {},
   );
   const [processing, setProcessing] = useState(false);
-  const [videoPhase, setVideoPhase] = useState<VideoUploadPhase>('idle');
-  const [videoProgress, setVideoProgress] = useState(0);
-  const [videoStatusText, setVideoStatusText] = useState('');
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [removedImageIds, setRemovedImageIds] = useState<Set<string>>(() => new Set());
 
@@ -262,24 +254,20 @@ const CollectionUploadPage: React.FC = () => {
   }, [selectedCollectionId]);
 
   const existingImages = useMemo(() => {
-    const list = selectedCollection?.images.filter((img) => existingPreviewRaw(img)) ?? [];
+    const list = collectionMediaItems(selectedCollection ?? undefined).filter(
+      (img) => existingPreviewRaw(img),
+    );
     return list.filter((img) => {
       const id = resolveCollectionImageId(img);
       return !id || !removedImageIds.has(id);
     });
-  }, [selectedCollection?.images, removedImageIds]);
+  }, [selectedCollection, removedImageIds]);
 
   const hasPreviewContent = existingImages.length > 0 || pendingItems.length > 0;
-  const collectionHasVideo = hasCollectionVideo(selectedCollection);
-  const existingVideoThumbRaw = selectedCollection
-    ? collectionVideoThumbRaw(selectedCollection)
-    : '';
-  const existingVideoThumbSrc = useClassImageSrc(token, existingVideoThumbRaw);
-  const videoBusy = videoPhase !== 'idle';
-  const busy = processing || videoBusy || Boolean(deletingKey);
+  const busy = processing || Boolean(deletingKey);
 
   const patchPending = useCallback(
-    (collectionId: string, updater: (list: PendingImage[]) => PendingImage[]) => {
+    (collectionId: string, updater: (list: PendingMedia[]) => PendingMedia[]) => {
       setPendingByCollection((prev) => ({
         ...prev,
         [collectionId]: updater(prev[collectionId] ?? []),
@@ -344,28 +332,31 @@ const CollectionUploadPage: React.FC = () => {
 
   const uploadOne = async (
     collectionId: string,
-    item: PendingImage,
+    item: PendingMedia,
   ): Promise<{ publicFileUrl: string; publicPreviewUrl: string }> => {
     const basePath = buildCollectionImageBasePath(classId, eventId, collectionId, item.imageId);
-    const filePath = `${basePath}/file.jpg`;
+    const isVideo = item.mediaType === 'video';
+    const ext = item.videoExtension?.trim().replace(/^\./, '').toLowerCase() || 'mp4';
+    const filePath = isVideo ? `${basePath}/video.${ext}` : `${basePath}/file.jpg`;
     const previewPath = `${basePath}/preview.jpg`;
+    const logLabel = isVideo ? 'видео' : 'фото';
 
-    logUploadAction('фото: старт загрузки', {
+    logUploadAction(`${logLabel}: старт загрузки`, {
       imageId: item.imageId,
       basePath,
       fileSize: item.file.size,
       previewSize: item.preview.size,
     });
 
-    logUploadAction('фото: file.jpg — upload_url + PUT', { path: filePath });
+    logUploadAction(`${logLabel}: файл — upload_url + PUT`, { path: filePath });
     const publicFileUrl = await uploadFileToStorage(token!, filePath, item.file);
-    logUploadOk('фото: file.jpg', { path: filePath, fileurl: publicFileUrl || '(пусто)' });
+    logUploadOk(`${logLabel}: файл`, { path: filePath, fileurl: publicFileUrl || '(пусто)' });
 
-    logUploadAction('фото: preview.jpg — upload_url + PUT', { path: previewPath });
+    logUploadAction(`${logLabel}: preview.jpg — upload_url + PUT`, { path: previewPath });
     const publicPreviewUrl = await uploadFileToStorage(token!, previewPath, item.preview);
-    logUploadOk('фото: preview.jpg', { path: previewPath, previewurl: publicPreviewUrl || '(пусто)' });
+    logUploadOk(`${logLabel}: preview.jpg`, { path: previewPath, previewurl: publicPreviewUrl || '(пусто)' });
 
-    logUploadAction('фото: add_image', {
+    logUploadAction(`${logLabel}: add_image`, {
       collectionId,
       imageId: item.imageId,
       file: filePath,
@@ -381,15 +372,18 @@ const CollectionUploadPage: React.FC = () => {
       preview: previewPath,
       fileurl: publicFileUrl,
       previewurl: publicPreviewUrl,
+      ...(isVideo
+        ? { mediaType: 'video' as const, ...(item.duration ? { duration: item.duration } : {}) }
+        : {}),
     });
 
     if (!res.success) {
-      const err = res.message?.trim() || 'Не удалось сохранить фото в БД';
-      logUploadError('фото: add_image', err);
+      const err = res.message?.trim() || `Не удалось сохранить ${isVideo ? 'видео' : 'фото'} в БД`;
+      logUploadError(`${logLabel}: add_image`, err);
       throw new Error(err);
     }
 
-    logUploadOk('фото: завершено', {
+    logUploadOk(`${logLabel}: завершено`, {
       imageId: item.imageId,
       fileurl: publicFileUrl,
       previewurl: publicPreviewUrl,
@@ -406,12 +400,13 @@ const CollectionUploadPage: React.FC = () => {
     const processed = await processCollectionImage(raw);
     logUploadOk('сжатие', { imageId, fileSize: processed.file.size, previewSize: processed.preview.size });
 
-    const draft: PendingImage = {
+    const draft: PendingMedia = {
       localId,
       imageId,
       localPreviewUrl: processed.previewUrl,
       file: processed.file,
       preview: processed.preview,
+      mediaType: 'image',
       status: 'uploading',
     };
 
@@ -434,73 +429,40 @@ const CollectionUploadPage: React.FC = () => {
     }
   };
 
-  const processAndUploadVideo = async (raw: File) => {
-    if (!token?.trim() || !classId || !eventId || !selectedCollectionId) {
-      toast.error('Нет данных для загрузки видео');
-      return;
-    }
+  const processAndUploadVideo = async (raw: File, collectionId: string) => {
+    const localId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const imageId = newImageId();
 
-    setVideoPhase('validating');
-    setVideoProgress(0);
-    setVideoStatusText('Проверка видео…');
-    setProcessing(true);
+    const processed = await prepareCollectionVideoUpload(raw);
 
-    let localPreview = '';
+    const draft: PendingMedia = {
+      localId,
+      imageId,
+      localPreviewUrl: processed.previewUrl,
+      file: processed.video,
+      preview: processed.preview,
+      mediaType: 'video',
+      videoExtension: processed.videoExtension,
+      duration: processed.durationLabel,
+      status: 'uploading',
+    };
+
+    patchPending(collectionId, (list) => [...list, draft]);
 
     try {
-      const processed = await prepareCollectionVideoUpload(raw);
-
-      localPreview = processed.previewUrl;
-      setVideoPhase('uploading');
-      setVideoStatusText('Загрузка в облако…');
-      setVideoProgress(40);
-
-      const videoImageId = newImageId();
-      const paths = buildCollectionVideoPaths(
-        classId,
-        eventId,
-        selectedCollectionId,
-        videoImageId,
-        processed.videoExtension,
-      );
-      const fileurl = await uploadFileToStorage(token, paths.video, processed.video);
-      setVideoProgress(88);
-      const previewurl = await uploadFileToStorage(token, paths.preview, processed.preview);
-      setVideoProgress(95);
-
-      const res = await addVideo({
-        token,
-        collectionId: selectedCollectionId,
-        imageId: paths.imageId,
-        file: paths.video,
-        preview: paths.preview,
-        fileurl,
-        previewurl,
-        duration: processed.durationLabel,
-      });
-
-      if (!res.success) {
-        throw new Error(res.message?.trim() || 'Не удалось сохранить видео');
-      }
-
-      setVideoProgress(100);
-      setVideoStatusText('Видео загружено');
-      toast.success(res.message?.trim() || 'Видео загружено');
+      await uploadOne(collectionId, draft);
+      revokeVideoPreviewUrl(draft.localPreviewUrl);
+      patchPending(collectionId, (list) => list.filter((row) => row.localId !== localId));
       await reloadClass();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Не удалось загрузить видео';
-      logUploadError('видео', message);
+      const message = err instanceof Error ? err.message : 'Ошибка загрузки видео';
+      logUploadError('видео', { imageId, message });
+      patchPending(collectionId, (list) =>
+        list.map((row) =>
+          row.localId === localId ? { ...row, status: 'error', error: message } : row,
+        ),
+      );
       toast.error(message);
-      setVideoStatusText(message);
-    } finally {
-      revokeVideoPreviewUrl(localPreview);
-      setVideoPhase('idle');
-      setVideoProgress(0);
-      setVideoStatusText('');
-      setProcessing(false);
-      if (videoInputRef.current) {
-        videoInputRef.current.value = '';
-      }
     }
   };
 
@@ -517,55 +479,25 @@ const CollectionUploadPage: React.FC = () => {
       toast.warning('Выберите коллекцию из списка');
       return;
     }
-    if (busy) {
-      return;
-    }
-    await processAndUploadVideo(raw);
-  };
-
-  const deleteCollectionVideo = async () => {
-    if (!canEditEvent || !token?.trim() || !selectedCollectionId || !classId || !eventId) {
+    if (!classId || !eventId) {
+      toast.error('Нет class_id или event_id');
       return;
     }
     if (busy) {
       return;
     }
 
-    setVideoPhase('deleting');
     setProcessing(true);
-    setVideoStatusText('Удаление видео…');
-
     try {
-      const videoImageId = selectedCollection
-        ? resolveCollectionVideoImageId(selectedCollection)
-        : '';
-      const paths = videoImageId
-        ? buildCollectionVideoPaths(classId, eventId, selectedCollectionId, videoImageId)
-        : null;
-      const res = await delVideo({
-        token,
-        collectionId: selectedCollectionId,
-        ...(videoImageId ? { imageId: videoImageId } : {}),
-      });
-      if (!res.success) {
-        throw new Error(res.message?.trim() || 'Не удалось удалить видео');
-      }
-      if (paths) {
-        try {
-          await deleteCollectionVideoFiles(token, paths);
-        } catch {
-          // файлы могли быть уже удалены на сервере
-        }
-      }
-      toast.success('Видео удалено');
-      await reloadClass();
+      await processAndUploadVideo(raw, selectedCollectionId);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Не удалось удалить видео';
+      const message = err instanceof Error ? err.message : 'Не удалось обработать видео';
       toast.error(message);
     } finally {
-      setVideoPhase('idle');
-      setVideoStatusText('');
       setProcessing(false);
+      if (videoInputRef.current) {
+        videoInputRef.current.value = '';
+      }
     }
   };
 
@@ -592,11 +524,6 @@ const CollectionUploadPage: React.FC = () => {
 
     if (!classId || !eventId) {
       toast.error('Нет class_id или event_id');
-      return;
-    }
-
-    if (videoBusy) {
-      toast.warning('Дождитесь завершения загрузки видео');
       return;
     }
 
@@ -725,10 +652,6 @@ const CollectionUploadPage: React.FC = () => {
       !busy,
   );
 
-  const canManageVideo = Boolean(
-    classId && eventId && selectedCollection && selectedCollectionId && canEditEvent && !busy,
-  );
-
   const previewBusy = busy;
 
   return (
@@ -851,103 +774,57 @@ const CollectionUploadPage: React.FC = () => {
                 className="collection-upload__file-input"
                 onChange={(e) => void onFilesSelected(e.target.files)}
               />
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                className="collection-upload__file-input"
+                onChange={(e) => void onVideoSelected(e.target.files)}
+              />
 
-              <button
-                type="button"
-                className="collection-upload__add-files-btn"
-                disabled={!canAddFiles}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {processing ? (
-                  <IonSpinner name="crescent" />
-                ) : (
-                  <>
-                    <ImagePlus size={FIELD_ICON_SIZE} aria-hidden />
-                    Добавить файлы
-                  </>
-                )}
-              </button>
+              <div className="collection-upload__add-buttons">
+                <button
+                  type="button"
+                  className="collection-upload__add-files-btn"
+                  disabled={!canAddFiles}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {processing ? (
+                    <IonSpinner name="crescent" />
+                  ) : (
+                    <>
+                      <ImagePlus size={FIELD_ICON_SIZE} aria-hidden />
+                      Добавить фото
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="collection-upload__add-video-btn"
+                  disabled={!canAddFiles}
+                  onClick={() => videoInputRef.current?.click()}
+                >
+                  <Video size={FIELD_ICON_SIZE} aria-hidden />
+                  Добавить видео
+                </button>
+              </div>
 
               {!canAddFiles ? (
                 <p className="event-upload__hint" style={{ marginTop: 8 }}>
                   {!selectedCollection
                     ? 'Выберите коллекцию из списка или создайте новую.'
                     : !selectedCollectionId
-                      ? 'Нужен id коллекции для загрузки фото.'
+                      ? 'Нужен id коллекции для загрузки.'
                       : !classId || !eventId
                         ? 'Нет id класса или события — вернитесь и выберите событие снова.'
-                        : videoBusy
-                          ? 'Дождитесь завершения обработки видео.'
-                          : ''}
+                        : ''}
                 </p>
               ) : (
                 <p className="event-upload__hint" style={{ marginTop: 8 }}>
-                  Фото загружаются в выбранную коллекцию сразу после выбора файлов.
+                  Фото и видео добавляются в коллекцию как отдельные материалы. Видео — до 1 минуты,
+                  без сжатия.
                 </p>
               )}
-
-              <div className="collection-upload__video-section">
-                <p className="event-upload__label">Видеоролик фотосессии</p>
-                <p className="collection-upload__video-hint">
-                  До 1 минуты. Файл загружается без сжатия в исходном формате.
-                </p>
-
-                {collectionHasVideo && existingVideoThumbRaw ? (
-                  <div className="collection-upload__video-existing">
-                    <img src={existingVideoThumbSrc} alt="" loading="lazy" />
-                    {selectedCollection?.videoDuration?.trim() ? (
-                      <span className="collection-upload__video-duration">
-                        {selectedCollection.videoDuration.trim()}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {videoBusy ? (
-                  <div className="collection-upload__video-progress" role="status">
-                    <div className="collection-upload__video-progress-bar">
-                      <span
-                        className="collection-upload__video-progress-fill"
-                        style={{ width: `${videoProgress}%` }}
-                      />
-                    </div>
-                    <p className="collection-upload__video-progress-text">
-                      {videoStatusText || 'Обработка…'}
-                      {videoProgress > 0 ? ` (${videoProgress}%)` : ''}
-                    </p>
-                  </div>
-                ) : null}
-
-                <input
-                  ref={videoInputRef}
-                  type="file"
-                  accept="video/*"
-                  className="collection-upload__file-input"
-                  onChange={(e) => void onVideoSelected(e.target.files)}
-                />
-
-                <div className="collection-upload__video-actions">
-                  <button
-                    type="button"
-                    className="collection-upload__add-video-btn"
-                    disabled={!canManageVideo}
-                    onClick={() => videoInputRef.current?.click()}
-                  >
-                    <Video size={FIELD_ICON_SIZE} aria-hidden />
-                    {collectionHasVideo ? 'Заменить видео' : 'Добавить видео'}
-                  </button>
-                  {collectionHasVideo ? (
-                    <button
-                      type="button"
-                      className="collection-upload__delete-video-btn"
-                      disabled={!canManageVideo}
-                      onClick={() => void deleteCollectionVideo()}
-                    >
-                      Удалить
-                    </button>
-                  ) : null}
-                </div>
-              </div>
 
               <div className="collection-upload__preview-section">
                 <p className="event-upload__label">Предпросмотр</p>
@@ -955,7 +832,7 @@ const CollectionUploadPage: React.FC = () => {
                   <p className="collection-upload__preview-empty">Выберите коллекцию.</p>
                 ) : !hasPreviewContent ? (
                   <p className="collection-upload__preview-empty">
-                    В коллекции пока нет фото. Добавьте первое.
+                    В коллекции пока нет материалов. Добавьте фото или видео.
                   </p>
                 ) : (
                   <div className="collection-upload__preview-grid">
@@ -968,6 +845,7 @@ const CollectionUploadPage: React.FC = () => {
                           key={imageKey}
                           previewRaw={raw}
                           token={token}
+                          isVideo={isCollectionVideo(img)}
                           deleting={isDeleting}
                           disabled={!canEditEvent || (previewBusy && !isDeleting)}
                           onDelete={() => void deleteExistingImage(img, index)}
@@ -990,6 +868,11 @@ const CollectionUploadPage: React.FC = () => {
                             }
                           }}
                         />
+                        {item.mediaType === 'video' ? (
+                          <span className="collection-upload__preview-play" aria-hidden>
+                            <Video size={22} />
+                          </span>
+                        ) : null}
                         {item.status !== 'uploading' ? (
                           <button
                             type="button"

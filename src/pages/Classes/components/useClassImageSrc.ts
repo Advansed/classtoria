@@ -3,7 +3,10 @@ import { resolveImagePublicUrl } from './collectionUploadStorage';
 
 const FALLBACK = '/images/start-gallery.png';
 
-const isHttpUrl = (value: string): boolean => /^https?:\/\//i.test(value.trim());
+const isDirectMediaUrl = (value: string): boolean => {
+  const trimmed = value.trim();
+  return /^https?:\/\//i.test(trimmed) || trimmed.startsWith('blob:');
+};
 
 /** URL для превью: `public_url`, ключ в хранилище или подписанный GET. */
 export const useClassImageSrc = (
@@ -18,7 +21,7 @@ export const useClassImageSrc = (
       setSrc(FALLBACK);
       return;
     }
-    if (isHttpUrl(key)) {
+    if (isDirectMediaUrl(key)) {
       setSrc(key);
       return;
     }

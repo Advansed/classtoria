@@ -14,6 +14,18 @@
   background: #f5f5f5;
 }
 
+.collection-upload__add-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.collection-upload__add-buttons .collection-upload__add-files-btn,
+.collection-upload__add-buttons .collection-upload__add-video-btn {
+  flex: 1;
+  margin-top: 0;
+}
+
 .collection-upload__add-files-btn {
   width: 100%;
   display: flex;
@@ -179,6 +191,17 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.collection-upload__preview-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.28);
+  color: #fff;
+  pointer-events: none;
 }
 
 .collection-upload__preview-remove {

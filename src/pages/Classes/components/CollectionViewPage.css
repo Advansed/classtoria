@@ -120,34 +120,15 @@
   cursor: not-allowed;
 }
 
-.collection-view__video-wrap {
-  position: relative;
-  width: 100%;
-  margin-bottom: 16px;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #1a1a1a;
-  aspect-ratio: 16 / 9;
-}
-
-.collection-view__video-player {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain;
-  background: #000;
-}
-
-.collection-view__video-duration {
+.collection-view__photo-play {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.65);
-  font-size: 12px;
-  font-weight: 600;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.28);
   color: #fff;
+  pointer-events: none;
 }
 
 .collection-view__grid {

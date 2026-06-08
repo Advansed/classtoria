@@ -10,6 +10,10 @@ export type ClassImage = {
   commentsCount?:         number;
   /** Отмеченные дети (знаменатель в «12/7»). */
   taggedCount?:           number;
+  /** Видео в коллекции (участник коллекции, не отдельный ролик фотосессии). */
+  isVideo?:               boolean;
+  /** Длительность видео, например `1:23`. */
+  duration?:              string;
 };
 
 /** Комментарий к событию (если приходит в `get_class`). */
@@ -32,11 +36,10 @@ export type ClassCollection = {
   /** Имя автора коллекции для списка на экране события. */
   creatorName?:           string;
   images:                 ClassImage[];
-  /** Видеоролик фотосессии, если есть. */
+  /** @deprecated Старый формат — одно видео на коллекцию; новые видео в `images`. */
   videoUrl?:              string;
   videoPreview?:          string;
   videoDuration?:         string;
-  /** `image_id` видео в хранилище (если отдаёт API). */
   videoImageId?:          string;
 };
 

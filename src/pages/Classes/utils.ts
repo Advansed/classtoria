@@ -71,16 +71,32 @@ export const parseClassImage = (row: unknown): ClassImage | null => {
     o.tagged ?? o.tagged_count ?? o.tags_count ?? o.taggedCount ?? o.tags,
   );
 
+  const typeRaw = readStr(o.type ?? o.media_type ?? o.mediaType).toLowerCase();
+  const isVideoFlag =
+    typeRaw === 'video' ||
+    o.is_video === true ||
+    o.is_video === 1 ||
+    o.isVideo === true ||
+    o.isVideo === 1;
+
+  const file = readStr(o.fileurl ?? o.file_url ?? o.file ?? o.url ?? o.src);
+  const isVideoFromPath = /\/video\.[a-z0-9]{2,5}$/i.test(file);
+  const isVideo = isVideoFlag || isVideoFromPath;
+
+  const duration = readStr(o.duration ?? o.video_duration ?? o.videoDuration);
+
   return {
     date: readStr(o.date),
     preview: readStr(
       o.previewurl ?? o.preview_url ?? o.preview ?? o.thumb ?? o.thumbnail,
     ),
-    file: readStr(o.fileurl ?? o.file_url ?? o.file ?? o.url ?? o.src),
+    file,
     ...(imageId ? { imageId } : {}),
     ...(featured ? { featured: true } : {}),
     ...(commentsCount > 0 ? { commentsCount } : {}),
     ...(taggedCount > 0 ? { taggedCount } : {}),
+    ...(isVideo ? { isVideo: true } : {}),
+    ...(duration ? { duration } : {}),
   };
 };
 
